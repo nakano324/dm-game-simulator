@@ -1,0 +1,33 @@
+### ユーザー登録APIテスト
+# これは新しいユーザーを登録するためのリクエスト例です。
+# email と password の値を変更して試してください。
+
+POST http://localhost:5000/api/register
+Content-Type: application/json
+
+{
+    "email": "your_new_email@example.com",
+    "password": "your_secure_password"
+}
+
+### 同じメールアドレスで再度登録を試みるテスト (エラーを確認)
+# 上と同じ email を使うと、重複エラー (409 Conflict) が返されるはずです。
+
+POST http://localhost:5000/api/register
+Content-Type: application/json
+
+{
+    "email": "your_new_email@example.com",
+    "password": "another_password"
+}
+
+### 必須項目が欠けている場合のテスト (エラーを確認)
+# email または password が欠けていると、400 Bad Request エラーが返されるはずです。
+
+POST http://localhost:5000/api/register
+Content-Type: application/json
+
+{
+    "email": "missing_password@example.com"
+    
+}

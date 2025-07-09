@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>カード登録ページ</title>
+    <style>
+        body { font-family: sans-serif; display: flex; gap: 20px; padding: 20px; }
+        .form-section, .preview-section { flex: 1; padding: 20px; border: 1px solid #ccc; border-radius: 8px; }
+        .form-section label { display: block; margin-bottom: 5px; font-weight: bold; }
+        .form-section input, .form-section select, .form-section textarea {
+            width: calc(100% - 12px);
+            padding: 8px;
+            margin-bottom: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        .form-section textarea { resize: vertical; min-height: 80px; }
+        .form-section button {
+            padding: 10px 20px;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        .form-section button:hover { background-color: #0056b3; }
+
+        /* カードプレビューのスタイル */
+        .card-preview {
+            width: 240px; /* カードの幅 */
+            height: 360px; /* カードの高さ (1.5倍) */
+            border: 2px solid #333;
+            border-radius: 10px;
+            background-color: #f0f0f0;
+            position: relative;
+            overflow: hidden;
+            box-shadow: 2px 2px 5px rgba(0,0,0,0.3);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 10px;
+            box-sizing: border-box;
+            background-image: url('https://placehold.jp/240x360.png'); /* 仮の背景画像 */
+            background-size: cover;
+            background-position: center;
+            color: white; /* テキストを白にして見やすくする */
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.7);
+        }
+        .card-preview img {
+            width: 90%;
+            height: 40%; /* 画像表示エリアの高さ */
+            object-fit: cover;
+            border: 1px solid #555;
+            margin-bottom: 5px;
+            background-color: #eee; /* 画像なしの場合の背景 */
+        }
+        .card-preview .card-name { font-size: 1.2em; font-weight: bold; margin-bottom: 5px; }
+        .card-preview .card-cost { position: absolute; top: 10px; left: 10px; background-color: rgba(0,0,0,0.6); padding: 3px 8px; border-radius: 5px; font-size: 1.1em; }
+        .card-preview .card-power { position: absolute; bottom: 10px; right: 10px; background-color: rgba(0,0,0,0.6); padding: 3px 8px; border-radius: 5px; font-size: 1.1em; }
+        .card-preview .card-type { font-size: 0.9em; margin-bottom: 5px; }
+        .card-preview .card-abilities, .card-preview .card-flavor-text {
+            font-size: 0.8em;
+            text-align: center;
+            padding: 0 5px;
+            max-height: 30%; /* テキストエリアの高さ調整 */
+            overflow-y: auto;
+            margin-bottom: 5px;
+        }
+        .card-preview .card-flavor-text { font-style: italic; color: #ccc; }
+        .card-preview .card-civilizations { font-size: 0.8em; margin-top: auto; }
+    </style>
+</head>
+<body>
+    <div class="form-section">
+        <h2>新しいカードの登録</h2>
+        <form id="cardRegistrationForm">
+            <label for="cardName">カード名:</label>
+            <input type="text" id="cardName" name="name" required><br>
+
+            <label for="cardCost">コスト:</label>
+            <input type="number" id="cardCost" name="cost" min="0" required><br>
+
+            <label for="cardType">カードタイプ:</label>
+            <select id="cardType" name="card_type" required>
+                <option value="creature">クリーチャー</option>
+                <option value="spell">呪文</option>
+                <option value="twimpact">ツインパクト</option>
+                </select><br>
+
+            <label for="cardCivilizations">文明 (カンマ区切り):</label>
+            <input type="text" id="cardCivilizations" name="civilizations" placeholder="例: 火,水" required><br>
+
+            <label for="cardPower">パワー (クリーチャーのみ):</label>
+            <input type="number" id="cardPower" name="power" min="0"><br>
+
+            <label for="cardAbilities">能力 (改行区切り):</label>
+            <textarea id="cardAbilities" name="abilities" placeholder="例: W・ブレイカー&#10;このクリーチャーが出た時、..."></textarea><br>
+
+            <label for="cardImage">画像URL:</label>
+            <input type="url" id="cardImage" name="image_url" placeholder="https://example.com/card_image.png"><br>
+            <button type="submit">カードを登録</button>
+        </form>
+        <div id="registrationMessage" style="margin-top: 20px; color: green;"></div>
+    </div>
+
+    <div class="preview-section">
+        <h2>カードプレビュー</h2>
+        <div class="card-preview">
+            <img id="previewImage" src="https://placehold.jp/240x160.png" alt="カード画像">
+            <div class="card-cost" id="previewCost">--</div>
+            <div class="card-name" id="previewName">カード名</div>
+            <div class="card-type" id="previewType">タイプ</div>
+            <div class="card-abilities" id="previewAbilities">能力テキスト</div>
+            <div class="card-flavor-text" id="previewFlavorText">フレーバーテキスト</div>
+            <div class="card-power" id="previewPower">P: ----</div>
+            <div class="card-civilizations" id="previewCivilizations">文明</div>
+        </div>
+    </div>
+
+    <script>
+        const form = document.getElementById('cardRegistrationForm');
+        const messageDiv = document.getElementById('registrationMessage');
+
+        const previewName = document.getElementById('previewName');
+        const previewCost = document.getElementById('previewCost');
+        const previewType = document.getElementById('previewType');
+        const previewAbilities = document.getElementById('previewAbilities');
+        const previewFlavorText = document.getElementById('previewFlavorText');
+        const previewPower = document.getElementById('previewPower');
+        const previewCivilizations = document.getElementById('previewCivilizations');
+        const previewImage = document.getElementById('previewImage');
+
+        const cardNameInput = document.getElementById('cardName');
+        const cardCostInput = document.getElementById('cardCost');
+        const cardTypeInput = document.getElementById('cardType');
+        const cardCivilizationsInput = document.getElementById('cardCivilizations');
+        const cardPowerInput = document.getElementById('cardPower');
+        const cardAbilitiesInput = document.getElementById('cardAbilities');
+        const cardFlavorTextInput = document.getElementById('cardFlavorText');
+        const cardImageInput = document.getElementById('cardImage');
+
+        // プレビューを更新する関数
+        function updatePreview() {
+            previewName.textContent = cardNameInput.value || 'カード名';
+            previewCost.textContent = cardCostInput.value ? `コスト: ${cardCostInput.value}` : '--';
+            previewType.textContent = cardTypeInput.value || 'タイプ';
+            previewAbilities.innerHTML = cardAbilitiesInput.value.split('\n').join('<br>') || '能力テキスト';
+            previewFlavorText.innerHTML = cardFlavorTextInput.value.split('\n').join('<br>') || 'フレーバーテキスト';
+            previewPower.textContent = cardPowerInput.value ? `P: ${cardPowerInput.value}` : 'P: ----';
+            previewCivilizations.textContent = cardCivilizationsInput.value || '文明';
+            previewImage.src = cardImageInput.value || 'https://placehold.jp/240x160.png';
+
+            // クリーチャー以外の場合、パワーを非表示にするなどの調整
+            if (cardTypeInput.value !== 'creature' && cardTypeInput.value !== 'twimpact') {
+                 previewPower.style.display = 'none';
+            } else {
+                 previewPower.style.display = 'block';
+            }
+        }
+
+        // 入力フィールドの変更を監視し、プレビューを更新
+        cardNameInput.addEventListener('input', updatePreview);
+        cardCostInput.addEventListener('input', updatePreview);
+        cardTypeInput.addEventListener('change', updatePreview);
+        cardCivilizationsInput.addEventListener('input', updatePreview);
+        cardPowerInput.addEventListener('input', updatePreview);
+        cardAbilitiesInput.addEventListener('input', updatePreview);
+        cardFlavorTextInput.addEventListener('input', updatePreview);
+        cardImageInput.addEventListener('input', updatePreview);
+
+        // フォーム送信処理
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            const cardData = {
+                name: cardNameInput.value,
+                cost: parseInt(cardCostInput.value),
+                card_type: cardTypeInput.value,
+                civilizations: cardCivilizationsInput.value.split(',').map(s => s.trim()).filter(s => s !== ''),
+                power: cardPowerInput.value ? parseInt(cardPowerInput.value) : null,
+                abilities: cardAbilitiesInput.value.split('\n').map(s => s.trim()).filter(s => s !== ''),
+                image_url: cardImageInput.value,
+            };
+
+            // 必要に応じてバリデーション
+            if (!cardData.name || isNaN(cardData.cost) || !cardData.card_type || cardData.civilizations.length === 0) {
+                messageDiv.textContent = '必須項目が入力されていません。';
+                messageDiv.style.color = 'red';
+                return;
+            }
+
+            try {
+                const response = await fetch('http://localhost:5000/api/register_card', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(cardData),
+                });
+
+                const result = await response.json();
+
+                if (response.ok) {
+                    messageDiv.textContent = `カードが正常に登録されました！ (ID: ${result.card_id})`;
+                    messageDiv.style.color = 'green';
+                    form.reset(); // フォームをリセット
+                    updatePreview(); // プレビューもリセット
+                } else {
+                    messageDiv.textContent = `登録失敗: ${result.error || response.statusText}`;
+                    messageDiv.style.color = 'red';
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                messageDiv.textContent = 'ネットワークエラーが発生しました。';
+                messageDiv.style.color = 'red';
+            }
+        });
+
+        // ページロード時に一度プレビューを初期化
+        updatePreview();
+    </script>
+</body>
+</html>

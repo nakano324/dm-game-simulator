@@ -1,0 +1,31 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+env/
+venv/
+.venv/
+build/
+develop-eggs/
+dist/
+eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.so
+.coverage
+.pytest_cache/
+htmlcov/
+.tox/
+.nox/
+
+# Flask-SQLAlchemy specific
+*.db # SQLiteデータベースファイル（例: site.db）
+instance/ # Flaskのインスタンスフォルダ
