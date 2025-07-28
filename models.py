@@ -1,4 +1,4 @@
-from DM_game_system import db # DM_game_system から db オブジェクトをインポート
+from database import db # DM_game_system から db オブジェクトをインポート
 from datetime import datetime
 from werkzeug.security import generate_password_hash, check_password_hash # Userモデルで使う場合
 
@@ -7,9 +7,18 @@ from werkzeug.security import generate_password_hash, check_password_hash # User
 class User(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     email = db.Column(db.String(120), unique=True, nullable=False)
-    password = db.Column(db.String(120), nullable=False)
+    # passwordをpassword_hashに変更
+    password_hash = db.Column(db.String(256), nullable=False)
     
-    decks = db.relationship('Deck', backref='author', lazy=True) 
+    decks = db.relationship('Deck', backref='author', lazy=True)
+
+    # パスワードをハッシュ化して設定するメソッドを追加
+    def set_password(self, password):
+        self.password_hash = generate_password_hash(password)
+
+    # 入力されたパスワードが正しいかチェックするメソッドを追加
+    def check_password(self, password):
+        return check_password_hash(self.password_hash, password)
 
     def __repr__(self):
         return f'<User {self.email}>'

@@ -1,5 +1,7 @@
 from flask import Flask, request, jsonify, Response
 from flask_cors import CORS
+from database import db   # 追加
+from models import User, Deck # 追加
 
 import json
 
@@ -2157,6 +2159,21 @@ def take_turn(game):
 app = Flask(__name__)
 CORS(app, resources={r"/api/*": {"origins": "http://localhost:5173"}}, supports_credentials=True)
 
+# ▼▼ データベース設定 ▼▼
+app.config['SQLALCHEMY_DATABASE_URI'] = 'postgresql://dm_game_sim_api_new_db_user:t9pyd4ecejTKPSLhJBNZhtDNm5pn1t5d@dpg-d1q7osnfte5s73d1p7m0-a/dm_game_sim_api_new_db'
+app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+
+# ▼▼ アプリとデータベースを連携 ▼▼
+db.init_app(app)
+
+# --- 4. テーブル自動作成（シェル不要の解決策） ---
+# このブロックが、サーバー起動時にテーブルが存在するか確認し、
+# なければ自動的に作成してくれます。
+with app.app_context():
+    db.create_all()
+
+
+
 # デバッグモードを有効化
 app.debug = True
 
@@ -2623,6 +2640,34 @@ def card_action():
         'hand':         [c.to_dict() for c in player.hand],
         'graveyard':    [c.to_dict() for c in player.graveyard],
     })
+
+@app.route('/')
+def index():
+    """サーバーが起動しているかブラウザで確認するためのページ"""
+    return "<h1>DM Game API Server is running!</h1><p>データベースの動作確認は /api/register にPOSTリクエストを送ってください。</p>"
+
+@app.route('/api/register', methods=['POST'])
+def register_user():
+    """ユーザーを新規登録するためのAPI"""
+    data = request.get_json()
+
+    # 入力データ（メールアドレスとパスワード）があるかチェック
+    if not data or not data.get('email') or not data.get('password'):
+        return jsonify({'error': 'emailとpasswordは必須です'}), 400
+
+    # メールアドレスが既にデータベースに存在するかチェック
+    if User.query.filter_by(email=data['email']).first():
+        return jsonify({'error': 'このメールアドレスは既に使用されています'}), 409
+
+    # 新しいユーザーのデータを作成
+    new_user = User(email=data['email'])
+    new_user.set_password(data['password']) # パスワードは暗号化して保存
+
+    # データベースに新しいユーザーを追加して保存
+    db.session.add(new_user)
+    db.session.commit()
+
+    return jsonify({'message': 'ユーザー登録が成功しました', 'user_id': new_user.id}), 201
 
 if __name__ == '__main__':
     # このファイルはWebサーバーとして使うため、CUIのゲームループは削除します。
