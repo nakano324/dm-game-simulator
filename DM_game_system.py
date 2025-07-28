@@ -1,57 +1,12 @@
-import os
-import json
-import random # randomのインポートを移動
-import uuid   # uuidのインポートを移動
-from datetime import datetime
-
 from flask import Flask, request, jsonify, Response
 from flask_cors import CORS
-from flask_sqlalchemy import SQLAlchemy
-from werkzeug.security import generate_password_hash, check_password_hash
-import time # timeモジュールのインポートを追加（ai_take_turnで使用）
 
-# --- 2. Flask アプリケーションの初期化と設定 ---
-app = Flask(__name__)
+import json
 
-# データベース設定
-basedir = os.path.abspath(os.path.dirname(__file__))
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///' + os.path.join(basedir, 'site.db')
-app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+import random
 
-db = SQLAlchemy(app)
+import uuid
 
-# CORS設定（一箇所にまとめる）
-CORS(app, resources={r"/api/*": {"origins": "http://localhost:5173"}}, supports_credentials=True)
-
-# デバッグモードを有効化
-app.debug = True
-
-
-# --- 3. データベースモデルの定義 (User, Deck) ---
-# APIエンドポイントで参照されるため、API定義の前に置く
-class User(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    email = db.Column(db.String(120), unique=True, nullable=False)
-    password = db.Column(db.String(120), nullable=False)
-    
-    decks = db.relationship('Deck', backref='author', lazy=True) 
-
-    def __repr__(self):
-        return f'<User {self.email}>'
-
-class Deck(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    name = db.Column(db.String(100), nullable=False)
-    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False) 
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    last_updated = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
-    cards_data = db.Column(db.Text, nullable=False) # カードのリストをJSON文字列として保存
-
-    def __repr__(self):
-        return f'<Deck {self.name}>'
-
-# --- 4. ゲームロジック関連のクラス定義 (Card, PlayerState, GameState, twimpact) ---
-# APIエンドポイントやゲーム初期化関数で参照されるため、それらの前に置く
 class Card:
     id_counter = iter(range(1, 1000000))
 
@@ -65,6 +20,7 @@ class Card:
             'card_type': self.card_type,
             'abilities': self.abilities,
             'image_url': self.image_url or "https://placehold.jp/120x180.png",
+            # 以下を追加
             'spell_cost': getattr(self, 'spell_cost', None),
             'spell_civilizations': getattr(self, 'spell_civilizations', []),
         }
@@ -72,8 +28,7 @@ class Card:
             d['attacked'] = self.id in attacked_creatures
         return d
 
-    # flavor_text を __init__ から削除済み
-    def __init__(self, name, cost, power, card_type, civilizations, on_end_of_turn=None, species=None, on_play=None, abilities=None, on_attack=None, image_url=""):
+    def __init__(self, name, cost, power, card_type, civilizations, on_end_of_turn=None, species=None, on_play=None, abilities=None,on_attack=None,image_url=""):
         self.name = name
         self.cost = cost
         self.power = power
@@ -94,6 +49,7 @@ class twimpact(Card):
                  civilizations=None,creature_civilizations=None, spell_civilizations=None,creature_abilities=None,
                  spell_abilities=None, creature_species=None, spell_species=None, on_play=None):
 
+        # 🔹 文明を統合（重複を排除）
         all_civs = set()
         if civilizations:
             all_civs.update(civilizations)
@@ -102,42 +58,45 @@ class twimpact(Card):
         if spell_civilizations:
             all_civs.update(spell_civilizations)
 
+
         super().__init__(name=creature_name, on_end_of_turn=on_end_of_turn,cost=creature_cost, power=power,
                            on_play=on_play,civilizations=list(all_civs), card_type="twimpact",)
 
+ # ツインパクト専用属性
         self.name = name
         self.creature_name = creature_name
         self.spell_name = spell_name
         self.creature_cost = creature_cost
         self.spell_cost = spell_cost
         self.on_end_of_turn =on_end_of_turn if on_end_of_turn else []
-        self.creature_civilizations = creature_civilizations if creature_civilizations else []
-        self.spell_civilizations = spell_civilizations if spell_civilizations else []
-        self.creature_abilities = creature_abilities if creature_abilities else []
-        self.spell_abilities = spell_abilities if spell_abilities else []
-        self.creature_species = creature_species
-        self.spell_species = spell_species
-        self.summoned_this_turn = False
+        self.creature_civilizations = creature_civilizations if creature_civilizations else []  # クリーチャーの文明
+        self.spell_civilizations = spell_civilizations if spell_civilizations else []  # 呪文の文明
+        self.creature_abilities = creature_abilities if creature_abilities else []  # クリーチャーの効果
+        self.spell_abilities = spell_abilities if spell_abilities else []  # 呪文の効果
+        self.creature_species = creature_species  # クリーチャーの種族
+        self.spell_species = spell_species  # 呪文の種族
+        self.summoned_this_turn = False  # 召喚されたターンを記録するフラグ
         self.on_play = on_play
 
 class PlayerState:
     def __init__(self, name, deck):
-        self.name = name
-        self.deck = deck
-        self.hand = []
-        self.mana_zone = []
-        self.battle_zone = []
+        self.name = name  # プレイヤー名
+        self.deck = deck  # 山札
+        self.hand = []  # 手札
+        self.mana_zone = []  # マナゾーン
+        self.battle_zone = []  # バトルゾーン
         self.battle_entry_order = [] 
-        self.shields = []
-        self.graveyard = []
-        self.available_mana = 0
-        self.summoned_creatures = []
-        self.attacked_creatures = []
-        self.creatures_summoned_this_turn = 0
-        self.used_mana_this_turn = False
+        self.shields = []  # シールド
+        self.graveyard = []  # 墓地
+        self.available_mana = 0  # 使用可能なマナの数
+        self.summoned_creatures = []  # **召喚されたばかりのクリーチャー**
+        self.attacked_creatures = []  # **そのターン攻撃済みのクリーチャー**
+        self.creatures_summoned_this_turn = 0  # ターン中に追加されたクリーチャーの数
+        self.used_mana_this_turn = False  # ✅ 最初から False にしておく！
         self.cannot_attack_this_turn = []
         self.played_card_without_mana = False
-        self.no_zone = []
+        self.no_zone = []  # どこでもないゾーン
+
 
 class GameState:
     def __init__(self, player1, player2, turn_player=0):
@@ -145,23 +104,22 @@ class GameState:
         self.turn_player = turn_player
         self.turn_started = False
         self.turn_count = 0
-        self.pending_choice = False
-        self.choice_candidates = []
-        self.choice_purpose = ""
-        self.choice_callback = None
+        self.pending_choice = False  # 選択待ち中か
+        self.choice_candidates = []  # 候補カード(Cardインスタンス)
+        self.choice_purpose = ""     # "hand" "mana" "grave" など
+        self.choice_callback = None  # 選択結果を受け取るコールバック
         self.dedodam_state = None
         self.pending_choice_player = None
 
     def is_opponent_turn(self, player):
         return self.players[self.turn_player] != player
 
-# --- 5. ヘルパー関数とAIクラスの定義 ---
-# select_card_from_options など、ゲームロジックに必要なすべての関数をここに配置
+# ✅ 共通の選択処理（人間/AI 共通）
 def select_card_from_options(cards, player, purpose="hand"):
     print("[select_card_from_options] called, cards:", [c.name for c in cards], "purpose:", purpose)
     is_ai = hasattr(player, "is_ai") and player.is_ai
 
-    # AIプレイヤーは従来通り自動選択
+    # --- AIプレイヤーは従来通り自動選択 ---
     if is_ai and hasattr(player, "ai"):
         if purpose == "hand":
             return sorted(cards, key=lambda c: player.ai.should_add_to_hand(c, player), reverse=True)[0]
@@ -170,16 +128,19 @@ def select_card_from_options(cards, player, purpose="hand"):
         elif purpose == "attack":
             return sorted(cards, key=lambda c: (not getattr(c, "tapped", False), c.power))[0]
         elif purpose == "shield_break":
+            import random
             return random.choice(cards)
         else:
             return cards[0]
         
-    # Flaskリクエストコンテキストがある場合のみ pending_choice を利用
-    from flask import has_request_context # 関数内インポートは推奨されないが、元のコードに合わせる
-    game = globals().get('game') # グローバル変数 game を取得する
+    from flask import has_request_context
+    game = globals().get('game')
     if game and hasattr(game, "pending_choice") and has_request_context():
+        # プレイヤーIDを明示的にセット
         if not getattr(game, "pending_choice", False):
+            # 人間視点でのAPIならpending_choice_player=0
             if hasattr(player, "is_ai") and player.is_ai:
+                # AIが呼び出した場合はpending_choice_player=1（基本フロントには渡さない）
                 game.pending_choice_player = 1
             else:
                 game.pending_choice_player = 0
@@ -189,7 +150,8 @@ def select_card_from_options(cards, player, purpose="hand"):
             game.choice_callback = None
         return None
 
-    # CLI（デバッグ等）は従来通りinputで選択
+
+    # --- CLI（デバッグ等）は従来通りinputで選択 ---
     while True:
         print(f"[DEBUG] select_card_from_options: is_ai={is_ai}, has_ai={hasattr(player, 'ai')}, purpose={purpose}")
         print(f"どのカードを {purpose} に選びますか？")
@@ -202,21 +164,38 @@ def select_card_from_options(cards, player, purpose="hand"):
                 return cards[index]
         print("無効な入力です。")
 
-# カード情報関連の関数群
+
+#　カード情報
 def trigger_battle_zone_effect(player, name=None, species=None, condition_func=None, effect_func=None):
+    """
+    バトルゾーンに存在する特定のクリーチャーに対して条件を満たす場合、効果を発動する
+
+    Parameters:
+    - player: PlayerState
+    - name: 発動対象とするカード名（省略可）
+    - species: 対象とする種族（省略可）
+    - condition_func: 条件を満たすかどうかを判定する関数（引数：クリーチャー）
+    - effect_func: 効果を発動する関数（引数：player, クリーチャー）
+    """
+
     for creature in player.battle_zone:
+        # 名前や種族でフィルター（指定された場合）
         if name and creature.name != name:
             continue
         if species and (not hasattr(creature, 'species') or species not in creature.species):
             continue
+
+        # 条件関数を満たす場合のみ
         if condition_func is None or condition_func(creature):
             if effect_func:
                 effect_func(player, creature)
 
+# ================= シールドトリガー判定 =================
 def has_shield_trigger(card):
     abilities = getattr(card, "abilities", []) or []
     return any("シールドトリガー" in ab or "G・ストライク" in ab for ab in abilities)
 
+# ================= ガードストライク処理（人間用） =================
 def apply_guard_strike_effect(game, player):
     opponent = game.players[1 - game.turn_player]
     if not opponent.battle_zone:
@@ -241,6 +220,7 @@ def apply_guard_strike_effect(game, player):
         print("無効な入力です。")
 
 def resolve_shield_trigger(player, shield_card, game):
+    """ブレイクされたシールドのカードにトリガーがあれば使用する"""
     is_ai = hasattr(player, "is_ai") and player.is_ai
 
     if has_shield_trigger(shield_card):
@@ -279,6 +259,7 @@ def resolve_shield_trigger(player, shield_card, game):
                         break
     return False
 
+# ================= ブレイク数の計算 =================
 def get_break_count(creature):
     if isinstance(creature, twimpact):
         abilities = creature.creature_abilities or []
@@ -296,6 +277,9 @@ def get_break_count(creature):
     return 1
 
 def speed_atacker(creature_card):
+    """
+    スピードアタッカーまたは進化クリーチャーなら召喚酔いを無視
+    """
     text = "".join(creature_card.abilities)
     if "スピードアタッカー" in text or any("進化" in t for t in creature_card.card_type):
         creature_card.summoned_this_turn = False
@@ -317,6 +301,7 @@ def boost(player, count=1, from_effect=False):
         else:
             print(f"{player.name} は {card.name}（多文明） をマナゾーンに置いた！（使用可能マナには加算されない）")
 
+    # ✅ 通常プレイ時のみフラグを立てる
     if not from_effect:
         player.used_mana_this_turn = True
 
@@ -329,7 +314,12 @@ def draw(player, x, from_effect=False):
     if not from_effect:
         player.used_mana_this_turn = True
 
+
 def reveal_top_cards(player, count):
+    """
+    山札の上から count 枚のカードを確認して返すだけの共通処理。
+    ※ 副作用として山札からは取り除かれるが、ゾーンへの分配は呼び出し元が行う。
+    """
     revealed = []
     for _ in range(min(count, len(player.deck))):
         revealed.append(player.deck.pop(0))
@@ -338,21 +328,33 @@ def reveal_top_cards(player, count):
         print(f" - {card.name}")
     return revealed
 
+
 def increase_graveyard(player, deck, x):
+    """
+    山札の上から x 枚墓地に置く。
+    """
     for _ in range(min(x, len(deck))):
         card = deck.pop(0)
         player.graveyard.append(card)
     print(f"{player.name} は山札の上から {x} 枚のカードを墓地に置いた。")
 
+
 def add_shield(player, deck, x):
+    """
+    山札の上から x 枚カードをシールドに追加する。
+    """
     for _ in range(min(x, len(deck))):
         card = deck.pop(0)
         player.shield_zone.append(card)
     print(f"{player.name} は山札の上から {x} 枚のカードをシールドに追加した。")
 
+
 def dispose(player, x):
+    """
+    手札を x 枚捨てる。
+    """
     for _ in range(min(x, len(player.hand))):
-        discarded_card = player.hand.pop(0)
+        discarded_card = player.hand.pop(0)  # 手札の先頭から削除
         player.graveyard.append(discarded_card)
     print(f"{player.name} は手札を {x} 枚捨てた。")
 
@@ -384,6 +386,11 @@ def remove_creature(player, target_creature, kind="destroy", amount=None):
         print(f"{target_creature.name} を手札に戻した。")
 
 def handes(opponent, x):
+    """
+    相手の手札からランダムにx枚捨てさせる（見ずに）
+    """
+    import random
+
     actual_count = min(x, len(opponent.hand))
     discarded = random.sample(opponent.hand, actual_count)
 
@@ -407,9 +414,19 @@ def dedodam_effect(player, from_effect=False):
     if not from_effect:
         player.used_mana_this_turn = True
 
-from copy import deepcopy # deepcopyのインポートを移動
+import random
+from copy import deepcopy
+import uuid
 
 def yobinion(player, maruru_id=None, summon_func=None):
+    """
+    ヨビニオン能力処理（完全版）
+    - 山札の上から1枚ずつめくり、コスト4未満のクリーチャーが出るまで続ける
+    - 条件を満たすクリーチャー1体を、渡された summon_func を使ってバトルゾーンに出す
+    - 出したカードがマルル自身でないか確認する（idで）
+    - 残りは山札の下にシャッフルして戻す
+    """
+
     revealed = []
     selected_index = -1
 
@@ -417,6 +434,7 @@ def yobinion(player, maruru_id=None, summon_func=None):
         card = player.deck.pop(0)
         revealed.append(card)
 
+        # 条件：コスト4未満のクリーチャー、かつマルル自身でない
         if card.card_type == "creature" and card.cost < 4:
             if getattr(card, "id", None) == maruru_id or card.name == "ヨビニオン・マルル":
                 continue
@@ -428,17 +446,21 @@ def yobinion(player, maruru_id=None, summon_func=None):
         selected_card = deepcopy(revealed[selected_index])
         selected_card.id = str(uuid.uuid4())
 
+        # ✅ 効果による召喚を適切に処理
         if summon_func:
             summon_func(player, selected_card, selected_card, from_effect=True)
         else:
+            # fallback（デバッグ用途）
             player.battle_zone.append(selected_card)
             selected_card.summoned_this_turn = False
             print(f"[DEBUG] summon_func が渡されていないため、直接バトルゾーンに追加")
 
         print(f"ヨビニオン効果：{selected_card.name} をバトルゾーンに出しました！ used_mana_this_turn = {player.used_mana_this_turn}")
 
+        # ✅ マルル効果チェック（2体目など）
         check_and_trigger_maruru_effect(player)
 
+    # 条件に一致しなかったカードを山札の下へ
     to_return = [c for i, c in enumerate(revealed) if i != selected_index]
     random.shuffle(to_return)
     player.deck.extend(to_return)
@@ -454,6 +476,7 @@ def check_and_trigger_maruru_effect(player, ignore_current=False):
     player.maruru_creature_this_turn += 1
 
     if player.maruru_creature_this_turn == 2 and not player.maruru_effect_used:
+        # 🔽 ignore_current=True の場合はここでスキップ
         if ignore_current:
             return
 
@@ -471,7 +494,7 @@ def yobinion_maruru_summon(player):
     top_card = player.deck.pop(0)
     print(f"ヨビニオン・マルル効果：山札の一番上は {top_card.name} です。")
 
-    from flask import has_request_context # 関数内インポートは推奨されないが、元のコードに合わせる
+    from flask import has_request_context
     if has_request_context():
         game.pending_choice = True
         game.pending_choice_player = 0   # ここを絶対「0」に固定（player==game.players[0]なら）
@@ -481,6 +504,7 @@ def yobinion_maruru_summon(player):
         print(f"【DEBUG】マルル効果pending_choiceセット: pending_choice_player={game.pending_choice_player}, choice_candidates={[c.name for c in game.choice_candidates]}")
         return
     else:
+        # CLIデバッグ用
         while True:
             choice = input(f"{top_card.name} を（h: 手札 / m: マナ）：").strip().lower()
             if choice == "h":
@@ -492,7 +516,9 @@ def yobinion_maruru_summon(player):
             print("無効な入力です。")
 
 def reset_maruru_flags(player):
-    """各ターンの開始時にマルル効果使用フラグと出たクリーチャー数をリセットする"""
+    """
+    各ターンの開始時にマルル効果使用フラグと出たクリーチャー数をリセットする
+    """
     player.maruru_effect_used = False
     player.maruru_creature_this_turn = 0
 
@@ -569,341 +595,18 @@ def shrink_shields_on_entry(player, from_effect=False):
 def jaouga_attack_effect(player, game):
     opponent = game.players[1 - game.turn_player]
 
+    # 相手クリーチャーを1体破壊（最初の1体を対象）
     if opponent.battle_zone:
         target = opponent.battle_zone[0]
         remove_creature(opponent, target)
 
+    # 相手の手札を2枚ランダムに捨てさせる
     handes(opponent, 2)
 
 
-# AI関連クラス
-class ShieldTriggerPredictor:
-    def __init__(self, deck, revealed_shields):
-        self.deck = deck
-        self.revealed = revealed_shields
+# サンプルカード（本来はもっと多くの種類を定義）
+import importlib
 
-    def sample_shields(self, count=5):
-        return random.sample([c for c in self.deck if c not in self.revealed], count)
-
-    def estimate_trigger_effect(self, card, player):
-        if not has_shield_trigger(card):
-            return 0
-
-        if "ブロッカー" in card.abilities:
-            return 1
-        elif "G・ストライク" in card.abilities:
-            return 1
-        elif any(kw in "".join(card.abilities) for kw in ["破壊", "マナ", "バウンス"]):
-            return 1
-        return 0
-
-    def simulate_total_removal(self, player, simulations=10):
-        total = 0
-        for _ in range(simulations):
-            sampled = self.sample_shields()
-            count = sum(self.estimate_trigger_effect(card, player) for card in sampled)
-            total += count
-        return total / simulations
-
-class RuleBasedAI:
-    def __init__(self, player_id):
-        self.player_id = player_id
-    
-    def should_add_to_hand(self, card, player):
-        boost_count = sum(1 for c in player.deck if getattr(c, "on_play", None) == boost)
-        threshold = 3 if boost_count >= 8 else 2
-        return card.cost <= len(player.mana_zone) + threshold
-
-    def choose_mana_card(self, game):
-        player = game.players[self.player_id]
-
-        print(f"[DEBUG] choose_mana_card called for {player.name}, used_mana_this_turn = {player.used_mana_this_turn}")
-    
-        if player.used_mana_this_turn:
-            print(f"[AI] {player.name} はこのターンすでにマナチャージしています。")
-            return
-
-        def get_card_cost(card):
-            if isinstance(card, twimpact):
-                return min(card.creature_cost, card.spell_cost)
-            return card.cost or 99
-
-        sorted_deck = sorted(player.deck, key=get_card_cost)
-        top2_cost_cards = sorted_deck[:2] if len(sorted_deck) >= 2 else sorted_deck
-
-        target_civilizations = set()
-        for card in top2_cost_cards:
-            if isinstance(card, twimpact):
-                civs = set(card.creature_civilizations + card.spell_civilizations)
-            else:
-                civs = set(card.civilizations or [])
-            target_civilizations.update(civs)
-
-        candidates = []
-        for card in player.hand:
-            score = 0
-            civilizations = getattr(card, 'civilizations', []) or []
-
-            if any(civ in target_civilizations for civ in civilizations):
-                score += 3
-
-            if len(civilizations) >= 2 and game.turn_count == 0:
-                score += 2
-
-            card_cost = get_card_cost(card)
-            score += abs(card_cost - len(player.mana_zone))
-
-            same_count = sum(1 for c in player.hand if c.name == card.name)
-            if same_count >= 2:
-                score += 1
-
-            candidates.append((score, card))
-
-        if not candidates:
-            print(f"[AI] {player.name} の手札にマナに置けるカードがない。")
-            return
-
-        candidates.sort(reverse=True, key=lambda x: x[0])
-        selected_card = candidates[0][1]
-        player.hand.remove(selected_card)
-        player.mana_zone.append(selected_card)
-
-        if hasattr(selected_card, 'civilizations') and len(selected_card.civilizations) == 1:
-            player.available_mana += 1
-
-        player.used_mana_this_turn = True
-        print(f"[AI] {player.name} は {selected_card.name} をマナゾーンに置いた。")
-        
-    def play_cards(self, game):
-        player = game.players[self.player_id]
-
-        boost_only = []
-        multi_effect = []
-        normal_cards = []
-        spell_cards = []
-
-        for card in list(player.hand):
-            if card.card_type == "spell":
-                spell_cards.append(card)
-            elif hasattr(card, 'on_play'):
-                if card.on_play == boost:
-                    boost_only.append(card)
-                elif card.name == "天災 デドダム":
-                    multi_effect.append(card)
-                else:
-                    normal_cards.append(card)
-            else:
-                normal_cards.append(card)
-
-        def get_cost(card):
-            if isinstance(card, twimpact):
-                return card.spell_cost if card.card_type == "spell" else card.creature_cost
-            return card.cost or 99
-
-        normal_cards.sort(key=get_cost, reverse=True)
-
-        if multi_effect:
-            potential_boost = any(
-                c for c in multi_effect if "マナゾーン" in "".join(c.abilities)
-            )
-            if potential_boost:
-                max_card_cost = get_cost(normal_cards[0]) if normal_cards else 0
-                if max_card_cost == player.available_mana + 1:
-                    card = multi_effect[0]
-                    if card in player.hand:
-                        play_card_for_ai(game, player, player.hand.index(card))
-                        
-        for card in normal_cards:
-            cost = get_cost(card)
-            if cost <= player.available_mana and card in player.hand:
-                play_card_for_ai(game, player, player.hand.index(card))
-                
-                break
-
-        for card in spell_cards:
-            cost = get_cost(card)
-            if cost <= player.available_mana and card in player.hand:
-                player.available_mana -= card.cost
-                player.used_mana_this_turn = True
-                player.hand.remove(card)
-                cast_spell(player, card, from_effect=False)
-                break
-
-        for card in boost_only:
-            if card.cost <= player.available_mana and card in player.hand:
-                play_card_for_ai(game, player, player.hand.index(card))
-            
-    def select_attacks(self, game):
-        player = game.players[self.player_id]
-        opponent = game.players[1 - self.player_id]
-        attackers = [c for c in player.battle_zone if c.id not in player.summoned_creatures]
-        attackers.sort(key=get_break_count)
-
-        actions = []
-
-        predictor = ShieldTriggerPredictor(opponent.deck, revealed_shields=[])
-        estimated_removal = predictor.simulate_total_removal(player, simulations=10)
-
-        def can_assemble_lethal_after_removal(attackers, estimated_removal, shield_count):
-            scored = [(get_break_count(c), c.power, c.id) for c in attackers]
-            survivors = scored[int(estimated_removal):]
-            return sum(b for b, _, _ in survivors) >= shield_count
-
-        def has_draw_or_summon_in_hand(player):
-            for card in player.hand:
-                if "カードを引く" in "".join(card.abilities) or "バトルゾーンに出す" in "".join(card.abilities):
-                    return True
-            return False
-
-        def should_attack_creature(attacker, target):
-            if attacker.power <= target.power:
-                return False
-            if getattr(target, "tapped", False) and "スピードアタッカー" not in "".join(attacker.abilities):
-                return True
-            return False
-
-        if can_assemble_lethal_after_removal(attackers, estimated_removal, len(opponent.shields)):
-            for attacker in attackers:
-                actions.append((attacker, None))
-            return actions
-
-        if not has_draw_or_summon_in_hand(player):
-            for attacker in attackers[:-int(estimated_removal)]:
-                actions.append((attacker, None))
-            return actions
-
-        for attacker in attackers:
-            for target in opponent.battle_zone:
-                if should_attack_creature(attacker, target):
-                    actions.append((attacker, target))
-                    return actions
-
-        return actions
-
-    def attack(self, game):
-        player = game.players[self.player_id]
-        actions = self.select_attacks(game)
-
-        for attacker, target in actions:
-            if hasattr(attacker, "on_attack") and callable(attacker.on_attack):
-                attacker.on_attack(player, game)
-
-            if target:
-                attack_target(game, attacker, target)
-            else:
-                attack_target(game, attacker)
-
-game = None # APIエンドポイントで使用される game をここで None に初期化。
-
-# --- 8. API エンドポイントの定義 ---
-
-@app.route('/api/register_card', methods=['POST'])
-def register_card():
-    data = request.get_json()
-    
-    # flavor_text は Card.__init__ から削除したので、required_fields からも削除
-    required_fields = ['name', 'cost', 'card_type', 'civilizations', 'abilities', 'power', 'image_url']
-    for field in required_fields:
-        if field not in data:
-            return jsonify({'error': f'Missing field: {field}'}), 400
-
-    try:
-        new_card = Card(
-            name=data['name'],
-            cost=int(data['cost']),
-            power=int(data['power']) if data['power'] is not None else None,
-            card_type=data['card_type'],
-            civilizations=data['civilizations'],
-            abilities=data['abilities'],
-            image_url=data.get('image_url', '')
-            # Card.__init__ に flavor_text はないので渡さない
-        )
-        # TODO: twimpact の登録も考慮に入れる場合、ここに追加ロジックが必要
-
-        # 一時的に sample_deck に追加（永続化は後で実装）
-        # 実際にはデータベースに保存するロジックをここに書きます
-        sample_deck.append(new_card) 
-        print(f"カード登録成功: {new_card.name}")
-        
-        return jsonify({'status': 'ok', 'message': 'Card registered successfully', 'card_id': new_card.id}), 201
-
-    except ValueError as e:
-        return jsonify({'error': f'Invalid data type: {e}'}), 400
-    except Exception as e:
-        return jsonify({'error': f'An unexpected error occurred: {e}'}), 500
-
-@app.route('/api/register', methods=['POST'])
-def register_user():
-    data = request.get_json()
-    email = data.get('email')
-    password = data.get('password')
-
-    if not email or not password:
-        return jsonify({'error': 'Email and password are required.'}), 400
-
-    existing_user = User.query.filter_by(email=email).first()
-    if existing_user:
-        return jsonify({'error': 'User with this email already exists.'}), 409
-
-    hashed_password = generate_password_hash(password)
-
-    new_user = User(email=email, password=hashed_password)
-    db.session.add(new_user)
-    db.session.commit()
-
-    return jsonify({'message': 'User registered successfully!', 'user_id': new_user.id}), 201
-
-@app.route('/api/decks', methods=['POST'])
-def save_deck():
-    data = request.get_json()
-    
-    deck_name = data.get('name')
-    user_id = data.get('user_id')
-    cards_data = data.get('cards')
-
-    if not deck_name or not user_id or not cards_data:
-        return jsonify({'error': 'Deck name, user ID, and cards data are required.'}), 400
-
-    user = User.query.get(user_id)
-    if not user:
-        return jsonify({'error': 'User not found.'}), 404
-
-    cards_json_string = json.dumps(cards_data)
-
-    new_deck = Deck(
-        name=deck_name,
-        user_id=user_id,
-        cards_data=cards_json_string
-    )
-    db.session.add(new_deck)
-    db.session.commit()
-
-    return jsonify({'message': 'Deck saved successfully!', 'deck_id': new_deck.id}), 201
-
-@app.route('/api/decks/<int:user_id>', methods=['GET'])
-def get_user_decks(user_id):
-    user = User.query.get(user_id)
-    if not user:
-        return jsonify({'error': 'User not found.'}), 404
-
-    decks = Deck.query.filter_by(user_id=user_id).all()
-
-    decks_list = []
-    for deck in decks:
-        loaded_cards_data = json.loads(deck.cards_data)
-        
-        decks_list.append({
-            'id': deck.id,
-            'name': deck.name,
-            'user_id': deck.user_id,
-            'created_at': deck.created_at.isoformat(),
-            'last_updated': deck.last_updated.isoformat(),
-            'cards': loaded_cards_data
-        })
-    
-    return jsonify(decks_list), 200
-
-# --- 11. sample_deck の定義 (Cardクラスとtwimpactクラスの定義より後に来るように) ---
 sample_deck = [
     twimpact(
         name="肉付きマナ送り/ブースト",
@@ -918,7 +621,8 @@ sample_deck = [
         spell_abilities=["山札の上から1枚マナゾーンに置く。"],
         on_play=boost
     ),
-    twimpact(
+
+        twimpact(
         name="肉付きマナ送り/ブースト",
         creature_name="配球の超人", spell_name="記録的剛球",
         creature_cost=8, spell_cost=2, power=14000,
@@ -931,7 +635,8 @@ sample_deck = [
         spell_abilities=["山札の上から1枚マナゾーンに置く。"],
         on_play=boost
     ),
-    twimpact(
+
+        twimpact(
         name="肉付きマナ送り/ブースト",
         creature_name="配球の超人", spell_name="記録的剛球",
         creature_cost=8, spell_cost=2, power=14000,
@@ -944,7 +649,8 @@ sample_deck = [
         spell_abilities=["山札の上から1枚マナゾーンに置く。"],
         on_play=boost
     ),
-    twimpact(
+
+        twimpact(
         name="肉付きマナ送り/ブースト",
         creature_name="配球の超人", spell_name="記録的剛球",
         creature_cost=8, spell_cost=2, power=14000,
@@ -957,7 +663,8 @@ sample_deck = [
         spell_abilities=["山札の上から1枚マナゾーンに置く。"],
         on_play=boost
     ),
-    twimpact(
+
+        twimpact(
         name="肉付きマナ送り/ブースト",
         creature_name="配球の超人", spell_name="記録的剛球",
         creature_cost=8, spell_cost=2, power=14000,
@@ -970,7 +677,8 @@ sample_deck = [
         spell_abilities=["山札の上から1枚マナゾーンに置く。"],
         on_play=boost
     ),
-    twimpact(
+
+        twimpact(
         name="肉付きマナ送り/ブースト",
         creature_name="配球の超人", spell_name="記録的剛球",
         creature_cost=8, spell_cost=2, power=14000,
@@ -983,6 +691,7 @@ sample_deck = [
         spell_abilities=["山札の上から1枚マナゾーンに置く。"],
         on_play=boost
     ),
+
     Card(
         name="ブースト",
         cost=2,
@@ -995,7 +704,8 @@ sample_deck = [
         ],
         on_play= boost
     ),
-    Card(
+
+        Card(
         name="ブースト",
         cost=2,
         civilizations=["緑"],
@@ -1007,7 +717,8 @@ sample_deck = [
         ],
         on_play= boost
     ),
-    Card(
+
+        Card(
         name="ブースト",
         cost=2,
         civilizations=["緑"],
@@ -1019,7 +730,8 @@ sample_deck = [
         ],
         on_play= boost
     ),
-    Card(
+
+        Card(
         name="ブースト",
         cost=2,
         civilizations=["緑"],
@@ -1031,7 +743,8 @@ sample_deck = [
         ],
         on_play= boost
     ),
-    Card(
+
+        Card(
         name="ブースト",
         cost=2,
         civilizations=["緑"],
@@ -1043,7 +756,8 @@ sample_deck = [
         ],
         on_play= boost
     ),
-    Card(
+
+        Card(
         name="ブースト",
         cost=2,
         civilizations=["緑"],
@@ -1055,6 +769,7 @@ sample_deck = [
         ],
         on_play= boost
     ),
+
     Card(
         name="天災デドダム",
         cost=3,
@@ -1067,7 +782,8 @@ sample_deck = [
         on_play=lambda player, from_effect=False: dedodam_effect(player, from_effect=from_effect),
         species=["トリニティ・コマンド", "侵略者"]
     ),
-    Card(
+
+        Card(
         name="天災デドダム",
         cost=3,
         civilizations=["緑","青","黒"],
@@ -1079,7 +795,8 @@ sample_deck = [
         on_play=lambda player, from_effect=False: dedodam_effect(player, from_effect=from_effect),
         species=["トリニティ・コマンド", "侵略者"]
     ),
-    Card(
+
+        Card(
         name="天災デドダム",
         cost=3,
         civilizations=["緑","青","黒"],
@@ -1091,7 +808,8 @@ sample_deck = [
         on_play=lambda player, from_effect=False: dedodam_effect(player, from_effect=from_effect),
         species=["トリニティ・コマンド", "侵略者"]
     ),
-    Card(
+
+        Card(
         name="天災デドダム",
         cost=3,
         civilizations=["緑","青","黒"],
@@ -1103,7 +821,8 @@ sample_deck = [
         on_play=lambda player, from_effect=False: dedodam_effect(player, from_effect=from_effect),
         species=["トリニティ・コマンド", "侵略者"]
     ),
-    Card(
+
+        Card(
         name="天災デドダム",
         cost=3,
         civilizations=["緑","青","黒"],
@@ -1115,7 +834,8 @@ sample_deck = [
         on_play=lambda player, from_effect=False: dedodam_effect(player, from_effect=from_effect),
         species=["トリニティ・コマンド", "侵略者"]
     ),
-    Card(
+
+        Card(
         name="天災デドダム",
         cost=3,
         civilizations=["緑","青","黒"],
@@ -1127,6 +847,7 @@ sample_deck = [
         on_play=lambda player, from_effect=False: dedodam_effect(player, from_effect=from_effect),
         species=["トリニティ・コマンド", "侵略者"]
     ),
+
     Card(
         name="ヨビニオン・マルル",
         cost=4,
@@ -1137,7 +858,8 @@ sample_deck = [
         species="スノーフェアリー",
         on_play= maruru_on_play
     ),
-    Card(
+
+        Card(
         name="ヨビニオン・マルル",
         cost=4,
         power=5000,
@@ -1147,7 +869,8 @@ sample_deck = [
         species="スノーフェアリー",
         on_play= maruru_on_play
     ),
-    Card(
+
+        Card(
         name="ヨビニオン・マルル",
         cost=4,
         power=5000,
@@ -1157,7 +880,8 @@ sample_deck = [
         species="スノーフェアリー",
         on_play= maruru_on_play
     ),
-    Card(
+
+        Card(
         name="ヨビニオン・マルル",
         cost=4,
         power=5000,
@@ -1167,7 +891,8 @@ sample_deck = [
         species="スノーフェアリー",
         on_play= maruru_on_play
     ),
-    Card(
+
+        Card(
         name="ヨビニオン・マルル",
         cost=4,
         power=5000,
@@ -1177,7 +902,8 @@ sample_deck = [
         species="スノーフェアリー",
         on_play= maruru_on_play
     ),
-    Card(
+
+        Card(
         name="ヨビニオン・マルル",
         cost=4,
         power=5000,
@@ -1187,7 +913,8 @@ sample_deck = [
         species="スノーフェアリー",
         on_play= maruru_on_play
     ),
-    Card(
+
+        Card(
         name="ヨビニオン・マルル",
         cost=4,
         power=5000,
@@ -1197,6 +924,7 @@ sample_deck = [
         species="スノーフェアリー",
         on_play= maruru_on_play
     ),
+
     Card(
         name="カウンターギミック",
         cost=6,
@@ -1214,7 +942,8 @@ sample_deck = [
         on_play=gaiaash_on_play
         ,on_end_of_turn= gaiaash_kaiser_end_of_turn
     ),
-    Card(
+
+        Card(
         name="カウンターギミック",
         cost=6,
         power=8000,
@@ -1231,7 +960,8 @@ sample_deck = [
         on_play=gaiaash_on_play
         ,on_end_of_turn= gaiaash_kaiser_end_of_turn
     ),
-    Card(
+
+        Card(
         name="カウンターギミック",
         cost=6,
         power=8000,
@@ -1248,7 +978,8 @@ sample_deck = [
         on_play=gaiaash_on_play
         ,on_end_of_turn= gaiaash_kaiser_end_of_turn
     ),
-    Card(
+
+        Card(
         name="カウンターギミック",
         cost=6,
         power=8000,
@@ -1265,7 +996,8 @@ sample_deck = [
         on_play=gaiaash_on_play
         ,on_end_of_turn= gaiaash_kaiser_end_of_turn
     ),
-    Card(
+
+        Card(
         name="カウンターギミック",
         cost=6,
         power=8000,
@@ -1282,7 +1014,8 @@ sample_deck = [
         on_play=gaiaash_on_play
         ,on_end_of_turn= gaiaash_kaiser_end_of_turn
     ),
-    Card(
+
+        Card(
         name="カウンターギミック",
         cost=6,
         power=8000,
@@ -1299,7 +1032,8 @@ sample_deck = [
         on_play=gaiaash_on_play
         ,on_end_of_turn= gaiaash_kaiser_end_of_turn
     ),
-    Card(
+
+        Card(
         name="カウンターギミック",
         cost=6,
         power=8000,
@@ -1316,133 +1050,141 @@ sample_deck = [
         on_play=gaiaash_on_play
         ,on_end_of_turn= gaiaash_kaiser_end_of_turn
     ),
+
     Card(
-        name="フィニッシャー",
-        cost=1,
-        power=13000,
-        civilizations=["黒"],
-        card_type=["鬼S-MAX進化クリーチャー","creature"],
-        species=["デモニオ", "鬼レクスターズ"],
-        abilities=[
-            "鬼S-MAX進化：自分がゲームに負ける時、またはこのクリーチャーが離れる時、かわりに自分の表向きのカードを３枚破壊してもよい。",
-            "このクリーチャーは進化元を必要としない。",
-            "自分のS-MAX進化クリーチャーが２体以上あれば、そのうちの１体を残し、残りをすべて手札に戻す。",
-            "T・ブレイカー",
-            "このクリーチャーが出た時、各プレイヤーは自身のシールドゾーンにあるカードを３枚ずつ選び、残りをすべて墓地に置く。",
-            "このクリーチャーが攻撃する時、相手のクリーチャーを１体破壊し、相手の手札を２枚捨てさせる。"
-        ],
-        on_play=shrink_shields_on_entry,
-        on_attack=jaouga_attack_effect
+    name="フィニッシャー",
+    cost=1,
+    power=13000,
+    civilizations=["黒"],
+    card_type=["鬼S-MAX進化クリーチャー","creature"],
+    species=["デモニオ", "鬼レクスターズ"],
+    abilities=[
+        "鬼S-MAX進化：自分がゲームに負ける時、またはこのクリーチャーが離れる時、かわりに自分の表向きのカードを３枚破壊してもよい。",
+        "このクリーチャーは進化元を必要としない。",
+        "自分のS-MAX進化クリーチャーが２体以上あれば、そのうちの１体を残し、残りをすべて手札に戻す。",
+        "T・ブレイカー",
+        "このクリーチャーが出た時、各プレイヤーは自身のシールドゾーンにあるカードを３枚ずつ選び、残りを墓地に置く。",
+        "このクリーチャーが攻撃する時、相手のクリーチャーを１体破壊し、相手の手札を２枚捨てさせる。"
+    ],
+    on_play=shrink_shields_on_entry,
+    on_attack=jaouga_attack_effect
     ),
-    Card(
-        name="フィニッシャー",
-        cost=1,
-        power=13000,
-        civilizations=["黒"],
-        card_type=["鬼S-MAX進化クリーチャー","creature"],
-        species=["デモニオ", "鬼レクスターズ"],
-        abilities=[
-            "鬼S-MAX進化：自分がゲームに負ける時、またはこのクリーチャーが離れる時、かわりに自分の表向きのカードを３枚破壊してもよい。",
-            "このクリーチャーは進化元を必要としない。",
-            "自分のS-MAX進化クリーチャーが２体以上あれば、そのうちの１体を残し、残りをすべて手札に戻す。",
-            "T・ブレイカー",
-            "このクリーチャーが出た時、各プレイヤーは自身のシールドゾーンにあるカードを３枚ずつ選び、残りをすべて墓地に置く。",
-            "このクリーチャーが攻撃する時、相手のクリーチャーを１体破壊し、相手の手札を２枚捨てさせる。"
-        ],
-        on_play=shrink_shields_on_entry,
-        on_attack=jaouga_attack_effect
+
+        Card(
+    name="フィニッシャー",
+    cost=1,
+    power=13000,
+    civilizations=["黒"],
+    card_type=["鬼S-MAX進化クリーチャー","creature"],
+    species=["デモニオ", "鬼レクスターズ"],
+    abilities=[
+        "鬼S-MAX進化：自分がゲームに負ける時、またはこのクリーチャーが離れる時、かわりに自分の表向きのカードを３枚破壊してもよい。",
+        "このクリーチャーは進化元を必要としない。",
+        "自分のS-MAX進化クリーチャーが２体以上あれば、そのうちの１体を残し、残りをすべて手札に戻す。",
+        "T・ブレイカー",
+        "このクリーチャーが出た時、各プレイヤーは自身のシールドゾーンにあるカードを３枚ずつ選び、残りを墓地に置く。",
+        "このクリーチャーが攻撃する時、相手のクリーチャーを１体破壊し、相手の手札を２枚捨てさせる。"
+    ],
+    on_play=shrink_shields_on_entry,
+    on_attack=jaouga_attack_effect
     ),
-    Card(
-        name="フィニッシャー",
-        cost=1,
-        power=13000,
-        civilizations=["黒"],
-        card_type=["鬼S-MAX進化クリーチャー","creature"],
-        species=["デモニオ", "鬼レクスターズ"],
-        abilities=[
-            "鬼S-MAX進化：自分がゲームに負ける時、またはこのクリーチャーが離れる時、かわりに自分の表向きのカードを３枚破壊してもよい。",
-            "このクリーチャーは進化元を必要としない。",
-            "自分のS-MAX進化クリーチャーが２体以上あれば、そのうちの１体を残し、残りをすべて手札に戻す。",
-            "T・ブレイカー",
-            "このクリーチャーが出た時、各プレイヤーは自身のシールドゾーンにあるカードを３枚ずつ選び、残りをすべて墓地に置く。",
-            "このクリーチャーが攻撃する時、相手のクリーチャーを１体破壊し、相手の手札を２枚捨てさせる。"
-        ],
-        on_play=shrink_shields_on_entry,
-        on_attack=jaouga_attack_effect
+
+        Card(
+    name="フィニッシャー",
+    cost=1,
+    power=13000,
+    civilizations=["黒"],
+    card_type=["鬼S-MAX進化クリーチャー","creature"],
+    species=["デモニオ", "鬼レクスターズ"],
+    abilities=[
+        "鬼S-MAX進化：自分がゲームに負ける時、またはこのクリーチャーが離れる時、かわりに自分の表向きのカードを３枚破壊してもよい。",
+        "このクリーチャーは進化元を必要としない。",
+        "自分のS-MAX進化クリーチャーが２体以上あれば、そのうちの１体を残し、残りをすべて手札に戻す。",
+        "T・ブレイカー",
+        "このクリーチャーが出た時、各プレイヤーは自身のシールドゾーンにあるカードを３枚ずつ選び、残りを墓地に置く。",
+        "このクリーチャーが攻撃する時、相手のクリーチャーを１体破壊し、相手の手札を２枚捨てさせる。"
+    ],
+    on_play=shrink_shields_on_entry,
+    on_attack=jaouga_attack_effect
     ),
-    Card(
-        name="フィニッシャー",
-        cost=1,
-        power=13000,
-        civilizations=["黒"],
-        card_type=["鬼S-MAX進化クリーチャー","creature"],
-        species=["デモニオ", "鬼レクスターズ"],
-        abilities=[
-            "鬼S-MAX進化：自分がゲームに負ける時、またはこのクリーチャーが離れる時、かわりに自分の表向きのカードを３枚破壊してもよい。",
-            "このクリーチャーは進化元を必要としない。",
-            "自分のS-MAX進化クリーチャーが２体以上あれば、そのうちの１体を残し、残りをすべて手札に戻す。",
-            "T・ブレイカー",
-            "このクリーチャーが出た時、各プレイヤーは自身のシールドゾーンにあるカードを３枚ずつ選び、残りをすべて墓地に置く。",
-            "このクリーチャーが攻撃する時、相手のクリーチャーを１体破壊し、相手の手札を２枚捨てさせる。"
-        ],
-        on_play=shrink_shields_on_entry,
-        on_attack=jaouga_attack_effect
+
+        Card(
+    name="フィニッシャー",
+    cost=1,
+    power=13000,
+    civilizations=["黒"],
+    card_type=["鬼S-MAX進化クリーチャー","creature"],
+    species=["デモニオ", "鬼レクスターズ"],
+    abilities=[
+        "鬼S-MAX進化：自分がゲームに負ける時、またはこのクリーチャーが離れる時、かわりに自分の表向きのカードを３枚破壊してもよい。",
+        "このクリーチャーは進化元を必要としない。",
+        "自分のS-MAX進化クリーチャーが２体以上あれば、そのうちの１体を残し、残りをすべて手札に戻す。",
+        "T・ブレイカー",
+        "このクリーチャーが出た時、各プレイヤーは自身のシールドゾーンにあるカードを３枚ずつ選び、残りを墓地に置く。",
+        "このクリーチャーが攻撃する時、相手のクリーチャーを１体破壊し、相手の手札を２枚捨てさせる。"
+    ],
+    on_play=shrink_shields_on_entry,
+    on_attack=jaouga_attack_effect
     ),
-    Card(
-        name="フィニッシャー",
-        cost=1,
-        power=13000,
-        civilizations=["黒"],
-        card_type=["鬼S-MAX進化クリーチャー","creature"],
-        species=["デモニオ", "鬼レクスターズ"],
-        abilities=[
-            "鬼S-MAX進化：自分がゲームに負ける時、またはこのクリーチャーが離れる時、かわりに自分の表向きのカードを３枚破壊してもよい。",
-            "このクリーチャーは進化元を必要としない。",
-            "自分のS-MAX進化クリーチャーが２体以上あれば、そのうちの１体を残し、残りをすべて手札に戻す。",
-            "T・ブレイカー",
-            "このクリーチャーが出た時、各プレイヤーは自身のシールドゾーンにあるカードを３枚ずつ選び、残りをすべて墓地に置く。",
-            "このクリーチャーが攻撃する時、相手のクリーチャーを１体破壊し、相手の手札を２枚捨てさせる。"
-        ],
-        on_play=shrink_shields_on_entry,
-        on_attack=jaouga_attack_effect
+
+        Card(
+    name="フィニッシャー",
+    cost=1,
+    power=13000,
+    civilizations=["黒"],
+    card_type=["鬼S-MAX進化クリーチャー","creature"],
+    species=["デモニオ", "鬼レクスターズ"],
+    abilities=[
+        "鬼S-MAX進化：自分がゲームに負ける時、またはこのクリーチャーが離れる時、かわりに自分の表向きのカードを３枚破壊してもよい。",
+        "このクリーチャーは進化元を必要としない。",
+        "自分のS-MAX進化クリーチャーが２体以上あれば、そのうちの１体を残し、残りをすべて手札に戻す。",
+        "T・ブレイカー",
+        "このクリーチャーが出た時、各プレイヤーは自身のシールドゾーンにあるカードを３枚ずつ選び、残りを墓地に置く。",
+        "このクリーチャーが攻撃する時、相手のクリーチャーを１体破壊し、相手の手札を２枚捨てさせる。"
+    ],
+    on_play=shrink_shields_on_entry,
+    on_attack=jaouga_attack_effect
     ),
-    Card(
-        name="フィニッシャー",
-        cost=1,
-        power=13000,
-        civilizations=["黒"],
-        card_type=["鬼S-MAX進化クリーチャー","creature"],
-        species=["デモニオ", "鬼レクスターズ"],
-        abilities=[
-            "鬼S-MAX進化：自分がゲームに負ける時、またはこのクリーチャーが離れる時、かわりに自分の表向きのカードを３枚破壊してもよい。",
-            "このクリーチャーは進化元を必要としない。",
-            "自分のS-MAX進化クリーチャーが２体以上あれば、そのうちの１体を残し、残りをすべて手札に戻す。",
-            "T・ブレイカー",
-            "このクリーチャーが出た時、各プレイヤーは自身のシールドゾーンにあるカードを３枚ずつ選び、残りをすべて墓地に置く。",
-            "このクリーチャーが攻撃する時、相手のクリーチャーを１体破壊し、相手の手札を２枚捨てさせる。"
-        ],
-        on_play=shrink_shields_on_entry,
-        on_attack=jaouga_attack_effect
+
+        Card(
+    name="フィニッシャー",
+    cost=1,
+    power=13000,
+    civilizations=["黒"],
+    card_type=["鬼S-MAX進化クリーチャー","creature"],
+    species=["デモニオ", "鬼レクスターズ"],
+    abilities=[
+        "鬼S-MAX進化：自分がゲームに負ける時、またはこのクリーチャーが離れる時、かわりに自分の表向きのカードを３枚破壊してもよい。",
+        "このクリーチャーは進化元を必要としない。",
+        "自分のS-MAX進化クリーチャーが２体以上あれば、そのうちの１体を残し、残りをすべて手札に戻す。",
+        "T・ブレイカー",
+        "このクリーチャーが出た時、各プレイヤーは自身のシールドゾーンにあるカードを３枚ずつ選び、残りを墓地に置く。",
+        "このクリーチャーが攻撃する時、相手のクリーチャーを１体破壊し、相手の手札を２枚捨てさせる。"
+    ],
+    on_play=shrink_shields_on_entry,
+    on_attack=jaouga_attack_effect
     ),
-    Card(
-        name="フィニッシャー",
-        cost=1,
-        power=13000,
-        civilizations=["黒"],
-        card_type=["鬼S-MAX進化クリーチャー","creature"],
-        species=["デモニオ", "鬼レクスターズ"],
-        abilities=[
-            "鬼S-MAX進化：自分がゲームに負ける時、またはこのクリーチャーが離れる時、かわりに自分の表向きのカードを３枚破壊してもよい。",
-            "このクリーチャーは進化元を必要としない。",
-            "自分のS-MAX進化クリーチャーが２体以上あれば、そのうちの１体を残し、残りをすべて手札に戻す。",
-            "T・ブレイカー",
-            "このクリーチャーが出た時、各プレイヤーは自身のシールドゾーンにあるカードを３枚ずつ選び、残りをすべて墓地に置く。",
-            "このクリーチャーが攻撃する時、相手のクリーチャーを１体破壊し、相手の手札を２枚捨てさせる。"
-        ],
-        on_play=shrink_shields_on_entry,
-        on_attack=jaouga_attack_effect
+
+        Card(
+    name="フィニッシャー",
+    cost=1,
+    power=13000,
+    civilizations=["黒"],
+    card_type=["鬼S-MAX進化クリーチャー","creature"],
+    species=["デモニオ", "鬼レクスターズ"],
+    abilities=[
+        "鬼S-MAX進化：自分がゲームに負ける時、またはこのクリーチャーが離れる時、かわりに自分の表向きのカードを３枚破壊してもよい。",
+        "このクリーチャーは進化元を必要としない。",
+        "自分のS-MAX進化クリーチャーが２体以上あれば、そのうちの１体を残し、残りをすべて手札に戻す。",
+        "T・ブレイカー",
+        "このクリーチャーが出た時、各プレイヤーは自身のシールドゾーンにあるカードを３枚ずつ選び、残りを墓地に置く。",
+        "このクリーチャーが攻撃する時、相手のクリーチャーを１体破壊し、相手の手札を２枚捨てさせる。"
+    ],
+    on_play=shrink_shields_on_entry,
+    on_attack=jaouga_attack_effect
     ),
-]
+
+]  # 40枚デッキを作成
 
 def create_initial_game():
     # サンプルデッキ（40枚）を生成するための前提：sample_deck が global に存在すること
@@ -2412,6 +2154,14 @@ def take_turn(game):
             else:
                 print("無効なインデックスです。もう一度入力してください。\n")
 
+app = Flask(__name__)
+CORS(app, resources={r"/api/*": {"origins": "http://localhost:5173"}}, supports_credentials=True)
+
+# デバッグモードを有効化
+app.debug = True
+
+game = create_initial_game()
+
 # ==== flask用コード ======
 
 @app.route('/api/drop_card', methods=['POST'])
@@ -2875,22 +2625,8 @@ def card_action():
     })
 
 if __name__ == '__main__':
-    # アプリケーションコンテキスト内でデータベーステーブルを作成
-    with app.app_context():
-        db.create_all() # データベーステーブルを作成
-
-        # グローバル変数 game の初期化はここで一度だけ行います
-        game = create_initial_game()
-
-        # オプション: 管理者ユーザーを一度だけ作成するコード
-        exists_admin = User.query.filter_by(email='admin@example.com').first()
-        if not exists_admin:
-            hashed_password = generate_password_hash('admin_password') 
-            admin_user = User(email='admin@example.com', password=hashed_password)
-            db.session.add(admin_user)
-            db.session.commit()
-            print("Admin user 'admin@example.com' created (password: admin_password).")
-
-
-    # Flaskアプリケーションを起動
-    app.run(host='0.0.0.0', port=5000)
+    # このファイルはWebサーバーとして使うため、CUIのゲームループは削除します。
+    # 代わりに、ローカルでのテスト用にFlaskの開発サーバーを起動する命令をここに置きます。
+    # この部分はRenderでは実行されません。
+    print("Flask 開発サーバーを http://0.0.0.0:5000 で起動します。")
+    app.run(host='0.0.0.0', port=5000, debug=True)
