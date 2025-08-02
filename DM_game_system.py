@@ -609,584 +609,6 @@ def jaouga_attack_effect(player, game):
 # サンプルカード（本来はもっと多くの種類を定義）
 import importlib
 
-sample_deck = [
-    twimpact(
-        name="肉付きマナ送り/ブースト",
-        creature_name="配球の超人", spell_name="記録的剛球",
-        creature_cost=8, spell_cost=2, power=14000,
-        civilizations=["緑"], creature_civilizations=["緑"], spell_civilizations=["緑"],
-        creature_species=["ジャイアント"], spell_species=["ジャイアント・スキル"],
-        creature_abilities=[
-            "T・ブレイカー",
-            "■このクリーチャーが出た時、相手のクリーチャーを１体選び、持ち主のマナゾーンに置く。"
-        ],
-        spell_abilities=["山札の上から1枚マナゾーンに置く。"],
-        on_play=boost
-    ),
-
-        twimpact(
-        name="肉付きマナ送り/ブースト",
-        creature_name="配球の超人", spell_name="記録的剛球",
-        creature_cost=8, spell_cost=2, power=14000,
-        civilizations=["緑"], creature_civilizations=["緑"], spell_civilizations=["緑"],
-        creature_species=["ジャイアント"], spell_species=["ジャイアント・スキル"],
-        creature_abilities=[
-            "T・ブレイカー",
-            "■このクリーチャーが出た時、相手のクリーチャーを１体選び、持ち主のマナゾーンに置く。"
-        ],
-        spell_abilities=["山札の上から1枚マナゾーンに置く。"],
-        on_play=boost
-    ),
-
-        twimpact(
-        name="肉付きマナ送り/ブースト",
-        creature_name="配球の超人", spell_name="記録的剛球",
-        creature_cost=8, spell_cost=2, power=14000,
-        civilizations=["緑"], creature_civilizations=["緑"], spell_civilizations=["緑"],
-        creature_species=["ジャイアント"], spell_species=["ジャイアント・スキル"],
-        creature_abilities=[
-            "T・ブレイカー",
-            "■このクリーチャーが出た時、相手のクリーチャーを１体選び、持ち主のマナゾーンに置く。"
-        ],
-        spell_abilities=["山札の上から1枚マナゾーンに置く。"],
-        on_play=boost
-    ),
-
-        twimpact(
-        name="肉付きマナ送り/ブースト",
-        creature_name="配球の超人", spell_name="記録的剛球",
-        creature_cost=8, spell_cost=2, power=14000,
-        civilizations=["緑"], creature_civilizations=["緑"], spell_civilizations=["緑"],
-        creature_species=["ジャイアント"], spell_species=["ジャイアント・スキル"],
-        creature_abilities=[
-            "T・ブレイカー",
-            "■このクリーチャーが出た時、相手のクリーチャーを１体選び、持ち主のマナゾーンに置く。"
-        ],
-        spell_abilities=["山札の上から1枚マナゾーンに置く。"],
-        on_play=boost
-    ),
-
-        twimpact(
-        name="肉付きマナ送り/ブースト",
-        creature_name="配球の超人", spell_name="記録的剛球",
-        creature_cost=8, spell_cost=2, power=14000,
-        civilizations=["緑"], creature_civilizations=["緑"], spell_civilizations=["緑"],
-        creature_species=["ジャイアント"], spell_species=["ジャイアント・スキル"],
-        creature_abilities=[
-            "T・ブレイカー",
-            "■このクリーチャーが出た時、相手のクリーチャーを１体選び、持ち主のマナゾーンに置く。"
-        ],
-        spell_abilities=["山札の上から1枚マナゾーンに置く。"],
-        on_play=boost
-    ),
-
-        twimpact(
-        name="肉付きマナ送り/ブースト",
-        creature_name="配球の超人", spell_name="記録的剛球",
-        creature_cost=8, spell_cost=2, power=14000,
-        civilizations=["緑"], creature_civilizations=["緑"], spell_civilizations=["緑"],
-        creature_species=["ジャイアント"], spell_species=["ジャイアント・スキル"],
-        creature_abilities=[
-            "T・ブレイカー",
-            "■このクリーチャーが出た時、相手のクリーチャーを１体選び、持ち主のマナゾーンに置く。"
-        ],
-        spell_abilities=["山札の上から1枚マナゾーンに置く。"],
-        on_play=boost
-    ),
-
-    Card(
-        name="ブースト",
-        cost=2,
-        civilizations=["緑"],
-        power=None,
-        card_type="spell",
-        abilities=[
-            "■ G・ストライク（この呪文を自分のシールドゾーンから手札に加える時、相手に見せ、相手のクリーチャーを１体選んでもよい。このターン、そのクリーチャーは攻撃できない）",
-            "■ 自分の山札の上から1枚目をマナゾーンに置く。"
-        ],
-        on_play= boost
-    ),
-
-        Card(
-        name="ブースト",
-        cost=2,
-        civilizations=["緑"],
-        power=None,
-        card_type="spell",
-        abilities=[
-            "■ G・ストライク（この呪文を自分のシールドゾーンから手札に加える時、相手に見せ、相手のクリーチャーを１体選んでもよい。このターン、そのクリーチャーは攻撃できない）",
-            "■ 自分の山札の上から1枚目をマナゾーンに置く。"
-        ],
-        on_play= boost
-    ),
-
-        Card(
-        name="ブースト",
-        cost=2,
-        civilizations=["緑"],
-        power=None,
-        card_type="spell",
-        abilities=[
-            "■ G・ストライク（この呪文を自分のシールドゾーンから手札に加える時、相手に見せ、相手のクリーチャーを１体選んでもよい。このターン、そのクリーチャーは攻撃できない）",
-            "■ 自分の山札の上から1枚目をマナゾーンに置く。"
-        ],
-        on_play= boost
-    ),
-
-        Card(
-        name="ブースト",
-        cost=2,
-        civilizations=["緑"],
-        power=None,
-        card_type="spell",
-        abilities=[
-            "■ G・ストライク（この呪文を自分のシールドゾーンから手札に加える時、相手に見せ、相手のクリーチャーを１体選んでもよい。このターン、そのクリーチャーは攻撃できない）",
-            "■ 自分の山札の上から1枚目をマナゾーンに置く。"
-        ],
-        on_play= boost
-    ),
-
-        Card(
-        name="ブースト",
-        cost=2,
-        civilizations=["緑"],
-        power=None,
-        card_type="spell",
-        abilities=[
-            "■ G・ストライク（この呪文を自分のシールドゾーンから手札に加える時、相手に見せ、相手のクリーチャーを１体選んでもよい。このターン、そのクリーチャーは攻撃できない）",
-            "■ 自分の山札の上から1枚目をマナゾーンに置く。"
-        ],
-        on_play= boost
-    ),
-
-        Card(
-        name="ブースト",
-        cost=2,
-        civilizations=["緑"],
-        power=None,
-        card_type="spell",
-        abilities=[
-            "■ G・ストライク（この呪文を自分のシールドゾーンから手札に加える時、相手に見せ、相手のクリーチャーを１体選んでもよい。このターン、そのクリーチャーは攻撃できない）",
-            "■ 自分の山札の上から1枚目をマナゾーンに置く。"
-        ],
-        on_play= boost
-    ),
-
-    Card(
-        name="天災デドダム",
-        cost=3,
-        civilizations=["緑","青","黒"],
-        power=3000,
-        card_type="creature",
-        abilities=[
-            "■ このクリーチャーが出た時、自分の山札の上から3枚を見る。そのうち1枚を手札に、1枚をマナゾーンに、残り1枚を墓地に置く。"
-        ],
-        on_play=lambda player, from_effect=False: dedodam_effect(player, from_effect=from_effect),
-        species=["トリニティ・コマンド", "侵略者"]
-    ),
-
-        Card(
-        name="天災デドダム",
-        cost=3,
-        civilizations=["緑","青","黒"],
-        power=3000,
-        card_type="creature",
-        abilities=[
-            "■ このクリーチャーが出た時、自分の山札の上から3枚を見る。そのうち1枚を手札に、1枚をマナゾーンに、残り1枚を墓地に置く。"
-        ],
-        on_play=lambda player, from_effect=False: dedodam_effect(player, from_effect=from_effect),
-        species=["トリニティ・コマンド", "侵略者"]
-    ),
-
-        Card(
-        name="天災デドダム",
-        cost=3,
-        civilizations=["緑","青","黒"],
-        power=3000,
-        card_type="creature",
-        abilities=[
-            "■ このクリーチャーが出た時、自分の山札の上から3枚を見る。そのうち1枚を手札に、1枚をマナゾーンに、残り1枚を墓地に置く。"
-        ],
-        on_play=lambda player, from_effect=False: dedodam_effect(player, from_effect=from_effect),
-        species=["トリニティ・コマンド", "侵略者"]
-    ),
-
-        Card(
-        name="天災デドダム",
-        cost=3,
-        civilizations=["緑","青","黒"],
-        power=3000,
-        card_type="creature",
-        abilities=[
-            "■ このクリーチャーが出た時、自分の山札の上から3枚を見る。そのうち1枚を手札に、1枚をマナゾーンに、残り1枚を墓地に置く。"
-        ],
-        on_play=lambda player, from_effect=False: dedodam_effect(player, from_effect=from_effect),
-        species=["トリニティ・コマンド", "侵略者"]
-    ),
-
-        Card(
-        name="天災デドダム",
-        cost=3,
-        civilizations=["緑","青","黒"],
-        power=3000,
-        card_type="creature",
-        abilities=[
-            "■ このクリーチャーが出た時、自分の山札の上から3枚を見る。そのうち1枚を手札に、1枚をマナゾーンに、残り1枚を墓地に置く。"
-        ],
-        on_play=lambda player, from_effect=False: dedodam_effect(player, from_effect=from_effect),
-        species=["トリニティ・コマンド", "侵略者"]
-    ),
-
-        Card(
-        name="天災デドダム",
-        cost=3,
-        civilizations=["緑","青","黒"],
-        power=3000,
-        card_type="creature",
-        abilities=[
-            "■ このクリーチャーが出た時、自分の山札の上から3枚を見る。そのうち1枚を手札に、1枚をマナゾーンに、残り1枚を墓地に置く。"
-        ],
-        on_play=lambda player, from_effect=False: dedodam_effect(player, from_effect=from_effect),
-        species=["トリニティ・コマンド", "侵略者"]
-    ),
-
-    Card(
-        name="ヨビニオン・マルル",
-        cost=4,
-        power=5000,
-        card_type="creature",
-        civilizations=["緑"],
-        abilities=["ヨビニオン", "2体目の召喚時にドロー/マナ効果"],
-        species="スノーフェアリー",
-        on_play= maruru_on_play
-    ),
-
-        Card(
-        name="ヨビニオン・マルル",
-        cost=4,
-        power=5000,
-        card_type="creature",
-        civilizations=["緑"],
-        abilities=["ヨビニオン", "2体目の召喚時にドロー/マナ効果"],
-        species="スノーフェアリー",
-        on_play= maruru_on_play
-    ),
-
-        Card(
-        name="ヨビニオン・マルル",
-        cost=4,
-        power=5000,
-        card_type="creature",
-        civilizations=["緑"],
-        abilities=["ヨビニオン", "2体目の召喚時にドロー/マナ効果"],
-        species="スノーフェアリー",
-        on_play= maruru_on_play
-    ),
-
-        Card(
-        name="ヨビニオン・マルル",
-        cost=4,
-        power=5000,
-        card_type="creature",
-        civilizations=["緑"],
-        abilities=["ヨビニオン", "2体目の召喚時にドロー/マナ効果"],
-        species="スノーフェアリー",
-        on_play= maruru_on_play
-    ),
-
-        Card(
-        name="ヨビニオン・マルル",
-        cost=4,
-        power=5000,
-        card_type="creature",
-        civilizations=["緑"],
-        abilities=["ヨビニオン", "2体目の召喚時にドロー/マナ効果"],
-        species="スノーフェアリー",
-        on_play= maruru_on_play
-    ),
-
-        Card(
-        name="ヨビニオン・マルル",
-        cost=4,
-        power=5000,
-        card_type="creature",
-        civilizations=["緑"],
-        abilities=["ヨビニオン", "2体目の召喚時にドロー/マナ効果"],
-        species="スノーフェアリー",
-        on_play= maruru_on_play
-    ),
-
-        Card(
-        name="ヨビニオン・マルル",
-        cost=4,
-        power=5000,
-        card_type="creature",
-        civilizations=["緑"],
-        abilities=["ヨビニオン", "2体目の召喚時にドロー/マナ効果"],
-        species="スノーフェアリー",
-        on_play= maruru_on_play
-    ),
-
-    Card(
-        name="カウンターギミック",
-        cost=6,
-        power=8000,
-        civilizations=["緑","青"],
-        card_type="creature",
-        abilities=[
-            "W・ブレイカー",
-            "相手ターン中にマナを使わずにカードを使った場合、手札から召喚可能",
-            "このクリーチャーが出た時、カードを2枚引く",
-            "自分のコスト10以上のクリーチャーのコストを4減らす（最低1）",
-            "相手のクリーチャーは出たターン自分を攻撃できない"
-        ],
-        species=["ブルー・コマンド・ドラゴン", "グリーン・コマンド・ドラゴン", "ハンター"],
-        on_play=gaiaash_on_play
-        ,on_end_of_turn= gaiaash_kaiser_end_of_turn
-    ),
-
-        Card(
-        name="カウンターギミック",
-        cost=6,
-        power=8000,
-        civilizations=["緑","青"],
-        card_type="creature",
-        abilities=[
-            "W・ブレイカー",
-            "相手ターン中にマナを使わずにカードを使った場合、手札から召喚可能",
-            "このクリーチャーが出た時、カードを2枚引く",
-            "自分のコスト10以上のクリーチャーのコストを4減らす（最低1）",
-            "相手のクリーチャーは出たターン自分を攻撃できない"
-        ],
-        species=["ブルー・コマンド・ドラゴン", "グリーン・コマンド・ドラゴン", "ハンター"],
-        on_play=gaiaash_on_play
-        ,on_end_of_turn= gaiaash_kaiser_end_of_turn
-    ),
-
-        Card(
-        name="カウンターギミック",
-        cost=6,
-        power=8000,
-        civilizations=["緑","青"],
-        card_type="creature",
-        abilities=[
-            "W・ブレイカー",
-            "相手ターン中にマナを使わずにカードを使った場合、手札から召喚可能",
-            "このクリーチャーが出た時、カードを2枚引く",
-            "自分のコスト10以上のクリーチャーのコストを4減らす（最低1）",
-            "相手のクリーチャーは出たターン自分を攻撃できない"
-        ],
-        species=["ブルー・コマンド・ドラゴン", "グリーン・コマンド・ドラゴン", "ハンター"],
-        on_play=gaiaash_on_play
-        ,on_end_of_turn= gaiaash_kaiser_end_of_turn
-    ),
-
-        Card(
-        name="カウンターギミック",
-        cost=6,
-        power=8000,
-        civilizations=["緑","青"],
-        card_type="creature",
-        abilities=[
-            "W・ブレイカー",
-            "相手ターン中にマナを使わずにカードを使った場合、手札から召喚可能",
-            "このクリーチャーが出た時、カードを2枚引く",
-            "自分のコスト10以上のクリーチャーのコストを4減らす（最低1）",
-            "相手のクリーチャーは出たターン自分を攻撃できない"
-        ],
-        species=["ブルー・コマンド・ドラゴン", "グリーン・コマンド・ドラゴン", "ハンター"],
-        on_play=gaiaash_on_play
-        ,on_end_of_turn= gaiaash_kaiser_end_of_turn
-    ),
-
-        Card(
-        name="カウンターギミック",
-        cost=6,
-        power=8000,
-        civilizations=["緑","青"],
-        card_type="creature",
-        abilities=[
-            "W・ブレイカー",
-            "相手ターン中にマナを使わずにカードを使った場合、手札から召喚可能",
-            "このクリーチャーが出た時、カードを2枚引く",
-            "自分のコスト10以上のクリーチャーのコストを4減らす（最低1）",
-            "相手のクリーチャーは出たターン自分を攻撃できない"
-        ],
-        species=["ブルー・コマンド・ドラゴン", "グリーン・コマンド・ドラゴン", "ハンター"],
-        on_play=gaiaash_on_play
-        ,on_end_of_turn= gaiaash_kaiser_end_of_turn
-    ),
-
-        Card(
-        name="カウンターギミック",
-        cost=6,
-        power=8000,
-        civilizations=["緑","青"],
-        card_type="creature",
-        abilities=[
-            "W・ブレイカー",
-            "相手ターン中にマナを使わずにカードを使った場合、手札から召喚可能",
-            "このクリーチャーが出た時、カードを2枚引く",
-            "自分のコスト10以上のクリーチャーのコストを4減らす（最低1）",
-            "相手のクリーチャーは出たターン自分を攻撃できない"
-        ],
-        species=["ブルー・コマンド・ドラゴン", "グリーン・コマンド・ドラゴン", "ハンター"],
-        on_play=gaiaash_on_play
-        ,on_end_of_turn= gaiaash_kaiser_end_of_turn
-    ),
-
-        Card(
-        name="カウンターギミック",
-        cost=6,
-        power=8000,
-        civilizations=["緑","青"],
-        card_type="creature",
-        abilities=[
-            "W・ブレイカー",
-            "相手ターン中にマナを使わずにカードを使った場合、手札から召喚可能",
-            "このクリーチャーが出た時、カードを2枚引く",
-            "自分のコスト10以上のクリーチャーのコストを4減らす（最低1）",
-            "相手のクリーチャーは出たターン自分を攻撃できない"
-        ],
-        species=["ブルー・コマンド・ドラゴン", "グリーン・コマンド・ドラゴン", "ハンター"],
-        on_play=gaiaash_on_play
-        ,on_end_of_turn= gaiaash_kaiser_end_of_turn
-    ),
-
-    Card(
-    name="フィニッシャー",
-    cost=1,
-    power=13000,
-    civilizations=["黒"],
-    card_type=["鬼S-MAX進化クリーチャー","creature"],
-    species=["デモニオ", "鬼レクスターズ"],
-    abilities=[
-        "鬼S-MAX進化：自分がゲームに負ける時、またはこのクリーチャーが離れる時、かわりに自分の表向きのカードを３枚破壊してもよい。",
-        "このクリーチャーは進化元を必要としない。",
-        "自分のS-MAX進化クリーチャーが２体以上あれば、そのうちの１体を残し、残りをすべて手札に戻す。",
-        "T・ブレイカー",
-        "このクリーチャーが出た時、各プレイヤーは自身のシールドゾーンにあるカードを３枚ずつ選び、残りを墓地に置く。",
-        "このクリーチャーが攻撃する時、相手のクリーチャーを１体破壊し、相手の手札を２枚捨てさせる。"
-    ],
-    on_play=shrink_shields_on_entry,
-    on_attack=jaouga_attack_effect
-    ),
-
-        Card(
-    name="フィニッシャー",
-    cost=1,
-    power=13000,
-    civilizations=["黒"],
-    card_type=["鬼S-MAX進化クリーチャー","creature"],
-    species=["デモニオ", "鬼レクスターズ"],
-    abilities=[
-        "鬼S-MAX進化：自分がゲームに負ける時、またはこのクリーチャーが離れる時、かわりに自分の表向きのカードを３枚破壊してもよい。",
-        "このクリーチャーは進化元を必要としない。",
-        "自分のS-MAX進化クリーチャーが２体以上あれば、そのうちの１体を残し、残りをすべて手札に戻す。",
-        "T・ブレイカー",
-        "このクリーチャーが出た時、各プレイヤーは自身のシールドゾーンにあるカードを３枚ずつ選び、残りを墓地に置く。",
-        "このクリーチャーが攻撃する時、相手のクリーチャーを１体破壊し、相手の手札を２枚捨てさせる。"
-    ],
-    on_play=shrink_shields_on_entry,
-    on_attack=jaouga_attack_effect
-    ),
-
-        Card(
-    name="フィニッシャー",
-    cost=1,
-    power=13000,
-    civilizations=["黒"],
-    card_type=["鬼S-MAX進化クリーチャー","creature"],
-    species=["デモニオ", "鬼レクスターズ"],
-    abilities=[
-        "鬼S-MAX進化：自分がゲームに負ける時、またはこのクリーチャーが離れる時、かわりに自分の表向きのカードを３枚破壊してもよい。",
-        "このクリーチャーは進化元を必要としない。",
-        "自分のS-MAX進化クリーチャーが２体以上あれば、そのうちの１体を残し、残りをすべて手札に戻す。",
-        "T・ブレイカー",
-        "このクリーチャーが出た時、各プレイヤーは自身のシールドゾーンにあるカードを３枚ずつ選び、残りを墓地に置く。",
-        "このクリーチャーが攻撃する時、相手のクリーチャーを１体破壊し、相手の手札を２枚捨てさせる。"
-    ],
-    on_play=shrink_shields_on_entry,
-    on_attack=jaouga_attack_effect
-    ),
-
-        Card(
-    name="フィニッシャー",
-    cost=1,
-    power=13000,
-    civilizations=["黒"],
-    card_type=["鬼S-MAX進化クリーチャー","creature"],
-    species=["デモニオ", "鬼レクスターズ"],
-    abilities=[
-        "鬼S-MAX進化：自分がゲームに負ける時、またはこのクリーチャーが離れる時、かわりに自分の表向きのカードを３枚破壊してもよい。",
-        "このクリーチャーは進化元を必要としない。",
-        "自分のS-MAX進化クリーチャーが２体以上あれば、そのうちの１体を残し、残りをすべて手札に戻す。",
-        "T・ブレイカー",
-        "このクリーチャーが出た時、各プレイヤーは自身のシールドゾーンにあるカードを３枚ずつ選び、残りを墓地に置く。",
-        "このクリーチャーが攻撃する時、相手のクリーチャーを１体破壊し、相手の手札を２枚捨てさせる。"
-    ],
-    on_play=shrink_shields_on_entry,
-    on_attack=jaouga_attack_effect
-    ),
-
-        Card(
-    name="フィニッシャー",
-    cost=1,
-    power=13000,
-    civilizations=["黒"],
-    card_type=["鬼S-MAX進化クリーチャー","creature"],
-    species=["デモニオ", "鬼レクスターズ"],
-    abilities=[
-        "鬼S-MAX進化：自分がゲームに負ける時、またはこのクリーチャーが離れる時、かわりに自分の表向きのカードを３枚破壊してもよい。",
-        "このクリーチャーは進化元を必要としない。",
-        "自分のS-MAX進化クリーチャーが２体以上あれば、そのうちの１体を残し、残りをすべて手札に戻す。",
-        "T・ブレイカー",
-        "このクリーチャーが出た時、各プレイヤーは自身のシールドゾーンにあるカードを３枚ずつ選び、残りを墓地に置く。",
-        "このクリーチャーが攻撃する時、相手のクリーチャーを１体破壊し、相手の手札を２枚捨てさせる。"
-    ],
-    on_play=shrink_shields_on_entry,
-    on_attack=jaouga_attack_effect
-    ),
-
-        Card(
-    name="フィニッシャー",
-    cost=1,
-    power=13000,
-    civilizations=["黒"],
-    card_type=["鬼S-MAX進化クリーチャー","creature"],
-    species=["デモニオ", "鬼レクスターズ"],
-    abilities=[
-        "鬼S-MAX進化：自分がゲームに負ける時、またはこのクリーチャーが離れる時、かわりに自分の表向きのカードを３枚破壊してもよい。",
-        "このクリーチャーは進化元を必要としない。",
-        "自分のS-MAX進化クリーチャーが２体以上あれば、そのうちの１体を残し、残りをすべて手札に戻す。",
-        "T・ブレイカー",
-        "このクリーチャーが出た時、各プレイヤーは自身のシールドゾーンにあるカードを３枚ずつ選び、残りを墓地に置く。",
-        "このクリーチャーが攻撃する時、相手のクリーチャーを１体破壊し、相手の手札を２枚捨てさせる。"
-    ],
-    on_play=shrink_shields_on_entry,
-    on_attack=jaouga_attack_effect
-    ),
-
-        Card(
-    name="フィニッシャー",
-    cost=1,
-    power=13000,
-    civilizations=["黒"],
-    card_type=["鬼S-MAX進化クリーチャー","creature"],
-    species=["デモニオ", "鬼レクスターズ"],
-    abilities=[
-        "鬼S-MAX進化：自分がゲームに負ける時、またはこのクリーチャーが離れる時、かわりに自分の表向きのカードを３枚破壊してもよい。",
-        "このクリーチャーは進化元を必要としない。",
-        "自分のS-MAX進化クリーチャーが２体以上あれば、そのうちの１体を残し、残りをすべて手札に戻す。",
-        "T・ブレイカー",
-        "このクリーチャーが出た時、各プレイヤーは自身のシールドゾーンにあるカードを３枚ずつ選び、残りを墓地に置く。",
-        "このクリーチャーが攻撃する時、相手のクリーチャーを１体破壊し、相手の手札を２枚捨てさせる。"
-    ],
-    on_play=shrink_shields_on_entry,
-    on_attack=jaouga_attack_effect
-    ),
-
-]  # 40枚デッキを作成
 
 def create_initial_game():
     # サンプルデッキ（40枚）を生成するための前提：sample_deck が global に存在すること
@@ -2177,8 +1599,6 @@ with app.app_context():
 # デバッグモードを有効化
 app.debug = True
 
-game = create_initial_game()
-
 # ==== flask用コード ======
 
 @app.route('/api/drop_card', methods=['POST'])
@@ -2403,57 +1823,19 @@ def set_mana():
 
     return jsonify({'status': 'ok'})
 
-@app.route('/api/state', methods=['GET'])
-def get_state():
-    # 自分（常にplayer1=0）視点
-    me = game.players[0]
-    opponent = game.players[1]
+@app.route('/api/games/<int:game_id>/state', methods=['GET'])
+def get_game_state(game_id):
+    # データベースから指定されたIDのゲームを探す
+    game_from_db = Game.query.get(game_id)
+    if not game_from_db:
+        return jsonify({'error': 'Game not found'}), 404
 
-    # ここでターン開始処理
-    if game.turn_player == 0 and not game.turn_started:
-        start_turn(game)
-        game.turn_started = True
+    # 保存されているJSON文字列からゲーム状態を復元する
+    import json
+    current_game_state = json.loads(game_from_db.game_state_json)
 
-    def zone_to_list(zone, attacked_creatures=None):
-        return [card.to_dict(attacked_creatures=attacked_creatures) for card in zone]
-
-    data = {
-        'battle_zone': zone_to_list(me.battle_zone, attacked_creatures=me.attacked_creatures),
-        'hand': zone_to_list(me.hand),
-        'mana_zone': zone_to_list(me.mana_zone),
-        'available_mana': me.available_mana,
-        'shield_zone': zone_to_list(me.shields),
-        'graveyard': zone_to_list(me.graveyard),
-        'no_zone': zone_to_list(me.no_zone), 
-        'deck': zone_to_list(me.deck),
-        'deck_count': len(me.deck),
-
-        'opponent_battle_zone': zone_to_list(opponent.battle_zone, attacked_creatures=opponent.attacked_creatures),
-        'opponent_shield_zone': zone_to_list(opponent.shields),
-        'opponent_available_mana': opponent.available_mana,
-        'opponent_mana_zone': zone_to_list(opponent.mana_zone),
-        'opponent_graveyard': zone_to_list(opponent.graveyard),
-        'opponent_deck': zone_to_list(opponent.deck),
-        'opponent_deck_count': len(opponent.deck),
-        'opponent_hand_count': len(opponent.hand),
-        'turn_player': game.turn_player,
-        'turn_count': game.turn_count,
-        'must_end_turn': False,
-        'used_mana_this_turn': me.used_mana_this_turn,
-    }
-
-    # ★ pending_choice時は候補カード等も返す
-    print("[get_state] pending_choice:", getattr(game, 'pending_choice', False))
-
-    # pending_choice_player==0 のときだけ返す
-    if getattr(game, 'pending_choice', False) and getattr(game, 'pending_choice_player', 0) == 0:
-        data['pending_choice'] = True
-        data['choice_candidates'] = [c.to_dict() for c in getattr(game, 'choice_candidates', [])]
-        data['choice_purpose'] = getattr(game, 'choice_purpose', '')
-    else:
-        data['pending_choice'] = False
-
-    return Response(json.dumps(data, ensure_ascii=False), mimetype='application/json')
+    # 復元したゲーム状態をクライアントに返す
+    return jsonify(current_game_state)
 
 @app.route('/api/end_turn', methods=['POST'])
 def end_turn_api():
@@ -2668,6 +2050,59 @@ def register_user():
     db.session.commit()
 
     return jsonify({'message': 'ユーザー登録が成功しました', 'user_id': new_user.id}), 201
+
+@app.route('/api/games/new', methods=['POST'])
+def start_new_game():
+    """新しい対戦を開始し、データベースに保存するAPI"""
+    data = request.get_json()
+    player1_id = data.get('player1_id')
+    player2_id = data.get('player2_id')
+
+    # TODO: 本来は各プレイヤーのデッキ情報をデータベースから読み込む
+    # 今は仮で、以前の create_initial_game のロジックを一時的に使う
+    
+    # --- 仮のゲーム初期化ロジック ---
+    # プレイヤー1と2のオブジェクトを作成
+    # (注意: このPlayerStateやCardは、まだデータベースと連携していない古いクラス)
+    player1 = PlayerState(name=f"User_{player1_id}", deck=[Card(...) for _ in range(40)]) # 仮のデッキ
+    player2 = PlayerState(name=f"User_{player2_id}", deck=[Card(...) for _ in range(40)]) # 仮のデッキ
+    
+    # ゲーム状態オブジェクトを作成
+    initial_game_state = GameState(player1, player2)
+
+    # 各プレイヤーの初期手札とシールドを設定
+    for p in initial_game_state.players:
+        p.shields = [p.deck.pop() for _ in range(5)]
+        p.hand = [p.deck.pop() for _ in range(5)]
+    # --- 仮のロジックここまで ---
+
+    # ゲーム状態をJSONに変換するために、各オブジェクトを辞書に変換
+    # (この部分は今後、CardやPlayerStateクラスにto_dictメソッドを実装して綺麗にする)
+    import json
+    game_state_for_db = {
+        "players": [
+            {"name": p.name, "hand": [c.name for c in p.hand], "shields_count": len(p.shields), "graveyard": [c.name for c in p.graveyard]}, # 他のゾーンも同様
+            {"name": p.name, "hand": [c.name for c in p.hand], "shields_count": len(p.shields), "graveyard": [c.name for c in p.graveyard]}
+        ],
+        "turn_player_index": initial_game_state.turn_player,
+        "turn_count": initial_game_state.turn_count
+    }
+    
+    # 新しいGameレコードを作成
+    new_game = Game(
+        player1_id=player1_id,
+        player2_id=player2_id,
+        current_turn_player_id=player1_id, # 最初はプレイヤー1のターン
+        game_state_json=json.dumps(game_state_for_db, ensure_ascii=False) # JSON文字列として保存
+    )
+
+    db.session.add(new_game)
+    db.session.commit()
+
+    return jsonify({
+        'message': '新しいゲームが開始されました',
+        'game_id': new_game.id
+    }), 201
 
 if __name__ == '__main__':
     # このファイルはWebサーバーとして使うため、CUIのゲームループは削除します。

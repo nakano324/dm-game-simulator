@@ -35,3 +35,26 @@ class Deck(db.Model):
     def __repr__(self):
         return f'<Deck {self.name}>'
 
+class Game(db.Model):
+    """１つの対戦セッション全体を管理するモデル"""
+    id = db.Column(db.Integer, primary_key=True)
+    
+    # 参加しているプレイヤーの情報
+    player1_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    player2_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    
+    # 現在のゲームの状態を丸ごとJSON形式のテキストで保存
+    # これにより、複雑なゲームの状態をシンプルに保存・復元できる
+    game_state_json = db.Column(db.Text, nullable=False)
+    
+    # 現在どちらのターンか (0 or 1)
+    current_turn_player_id = db.Column(db.Integer, nullable=False)
+    
+    # ゲームのステータス（例: 'ongoing', 'finished'）
+    status = db.Column(db.String(50), default='ongoing', nullable=False)
+    
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    def __repr__(self):
+        return f'<Game {self.id} - P1:{self.player1_id} vs P2:{self.player2_id}>'
+
