@@ -1,7 +1,7 @@
 from flask import Flask, request, jsonify, Response
 from flask_cors import CORS
 from database import db   # 追加
-from models import User, Deck # 追加
+from models import User, Deck, Game
 
 import json
 
