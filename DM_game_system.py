@@ -2058,42 +2058,53 @@ def start_new_game():
     player1_id = data.get('player1_id')
     player2_id = data.get('player2_id')
 
-    # TODO: 本来は各プレイヤーのデッキ情報をデータベースから読み込む
-    # 今は仮で、以前の create_initial_game のロジックを一時的に使う
+    if not player1_id or not player2_id:
+        return jsonify({'error': 'player1_id and player2_id are required'}), 400
+
+    # --- ▼▼▼【ここが修正点】▼▼▼ ---
+    # 仮のゲーム初期化ロジック
+    # Cardクラスを呼び出す際に、必要な引数(name, cost, power, card_type, civilizations)を
+    # すべて渡すように修正しました。
+    temp_deck_data = [
+        Card(f"仮カード{i}", i % 5 + 1, (i % 5 + 1) * 1000, "creature", ["光"]) for i in range(40)
+    ]
     
-    # --- 仮のゲーム初期化ロジック ---
-    # プレイヤー1と2のオブジェクトを作成
-    # (注意: このPlayerStateやCardは、まだデータベースと連携していない古いクラス)
-    player1 = PlayerState(name=f"User_{player1_id}", deck=[Card(...) for _ in range(40)]) # 仮のデッキ
-    player2 = PlayerState(name=f"User_{player2_id}", deck=[Card(...) for _ in range(40)]) # 仮のデッキ
+    # PlayerStateの引数名を、あなたのクラス定義に合わせて`deck`に修正しました。
+    player1 = PlayerState(name=f"User_{player1_id}", deck=list(temp_deck_data))
+    player2 = PlayerState(name=f"User_{player2_id}", deck=list(temp_deck_data))
+    # --- ▲▲▲【修正ここまで】▲▲▲ ---
     
-    # ゲーム状態オブジェクトを作成
     initial_game_state = GameState(player1, player2)
 
-    # 各プレイヤーの初期手札とシールドを設定
     for p in initial_game_state.players:
+        random.shuffle(p.deck)
         p.shields = [p.deck.pop() for _ in range(5)]
         p.hand = [p.deck.pop() for _ in range(5)]
-    # --- 仮のロジックここまで ---
 
-    # ゲーム状態をJSONに変換するために、各オブジェクトを辞書に変換
-    # (この部分は今後、CardやPlayerStateクラスにto_dictメソッドを実装して綺麗にする)
-    import json
+    # ゲーム状態をJSONに変換するヘルパー関数
+    def player_state_to_dict(p):
+        return {
+            "name": p.name,
+            "deck_count": len(p.deck),
+            "hand": [c.to_dict() for c in p.hand],
+            "mana_zone": [c.to_dict() for c in p.mana_zone],
+            "battle_zone": [c.to_dict() for c in p.battle_zone],
+            "shields": [c.to_dict() for c in p.shields],
+            "graveyard": [c.to_dict() for c in p.graveyard]
+        }
+
     game_state_for_db = {
-        "players": [
-            {"name": p.name, "hand": [c.name for c in p.hand], "shields_count": len(p.shields), "graveyard": [c.name for c in p.graveyard]}, # 他のゾーンも同様
-            {"name": p.name, "hand": [c.name for c in p.hand], "shields_count": len(p.shields), "graveyard": [c.name for c in p.graveyard]}
-        ],
+        "players": [player_state_to_dict(p) for p in initial_game_state.players],
         "turn_player_index": initial_game_state.turn_player,
         "turn_count": initial_game_state.turn_count
     }
     
-    # 新しいGameレコードを作成
+    # 新しいGameレコードをデータベースに作成
     new_game = Game(
         player1_id=player1_id,
         player2_id=player2_id,
-        current_turn_player_id=player1_id, # 最初はプレイヤー1のターン
-        game_state_json=json.dumps(game_state_for_db, ensure_ascii=False) # JSON文字列として保存
+        current_turn_player_id=player1_id,
+        game_state_json=json.dumps(game_state_for_db, ensure_ascii=False)
     )
 
     db.session.add(new_game)
@@ -2103,6 +2114,7 @@ def start_new_game():
         'message': '新しいゲームが開始されました',
         'game_id': new_game.id
     }), 201
+
 
 if __name__ == '__main__':
     # このファイルはWebサーバーとして使うため、CUIのゲームループは削除します。
