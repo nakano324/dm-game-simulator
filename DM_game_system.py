@@ -1648,7 +1648,22 @@ db.init_app(app)
 with app.app_context():
     db.create_all()
 
+TEMP_GAME_ID = 1 # TODO: 将来的には動的に変更
 
+def save_game_state(game_id, game_state_obj):
+    game_db_entry = Game.query.get(game_id)
+    if not game_db_entry: return False
+    next_turn_idx = game_state_obj.turn_player
+    next_turn_id = game_db_entry.player1_id if next_turn_idx == 0 else game_db_entry.player2_id
+    game_db_entry.game_state_json = json.dumps(game_state_obj.to_dict(), ensure_ascii=False)
+    game_db_entry.current_turn_player_id = next_turn_id
+    db.session.commit()
+    return True
+
+def load_game_state(game_id):
+    game_db_entry = Game.query.get(game_id)
+    if not game_db_entry: return None
+    return GameState.from_dict(json.loads(game_db_entry.game_state_json))
 
 # デバッグモードを有効化
 app.debug = True
@@ -1656,271 +1671,201 @@ app.debug = True
 # ==== flask用コード ======
 
 @app.route('/api/drop_card', methods=['POST'])
-def drop_card():
+def drop_card_api_adapter():
+    game_state_obj = load_game_state(TEMP_GAME_ID)
+    if not game_state_obj: return jsonify({'error': 'Game not found'}), 404
+        
     data = request.get_json()
-    card_id = data.get('cardId')
-    zone = data.get('zone')
-    player = game.players[game.turn_player]
+    card_id, zone = data.get('cardId'), data.get('zone')
+    player = game_state_obj.players[game_state_obj.turn_player]
+    card_to_process = next((c for c in player.hand if c.id == card_id), None)
+    if not card_to_process: return jsonify({'error': 'Card not found in hand'}), 404
 
-    print(f"[DEBUG][SERVER] drop_card called with zone={zone!r}, cardId={card_id!r}")
-
-    # 手札から対象カードを取得
-    card = next((c for c in player.hand if c.id == card_id), None)
-    if not card:
-        return jsonify({
-            'error': 'Card not found',
-            'hand': [c.to_dict() for c in player.hand],
-            'used_mana_this_turn': getattr(player, 'used_mana_this_turn', False),
-            'mana_zone': [c.to_dict() for c in player.mana_zone],
-        }), 404
-
-    # バトルゾーンに置く場合
-    if zone == 'battle':
-        # ■ ツインパクト選択処理
-        if getattr(card, 'card_type', None) == "twimpact":
-            if not game.pending_choice:
-                game.pending_choice         = True
-                game.pending_choice_player  = game.turn_player
-                game.choice_candidates      = [card]
-                game.choice_purpose         = "twimpact_mode"
-            return jsonify({'status': 'pending_twimpact_choice'})
-
-        # ■ クリーチャー or 呪文どちらで使うか判定（spellなら直接墓地/効果に行く前提）
-        is_spell = getattr(card, 'card_type', None) == "spell"
-        # ※ツインパクトでmodeを明示したい場合はここでmode判定を追加
-
-        idx = player.hand.index(card)
-        result = play_card_H(game, idx)
-        if result == 'not_enough_mana':
-            return jsonify({'error': 'not enough mana'}), 400
-        if result == 'not_enough_civilization':
-            return jsonify({'error': 'not enough civilization'}), 400
-
-        # デドダム効果の選択待ち（手札⇔マナ振り分け）
-        if getattr(game, 'pending_choice', False) and game.choice_purpose in ('hand', 'mana'):
-            return jsonify({
-                'status': 'pending_dedodam_choice',
-                'choice_candidates': [c.to_dict() for c in game.choice_candidates],
-                'choice_purpose': game.choice_purpose
-            })
-
-        # ここがポイント！！
-        # - クリーチャーの場合：バトルゾーンに残るから従来通り
-        # - 呪文の場合：使用した呪文カード自身
-        if is_spell:
-            last_played_card = card.to_dict()
-        else:
-            last_played_card = player.battle_zone[-1].to_dict()
-
-        return jsonify({
-            'status': 'ok',
-            'last_played_card': last_played_card
-        })
-
-    # マナゾーンに置く場合
-    elif zone == 'mana':
-        if getattr(player, 'used_mana_this_turn', False):
-            return jsonify({'error': 'Mana already charged this turn'}), 400
-        player.hand.remove(card)
-        player.mana_zone.append(card)
+    if zone == 'mana':
+        if getattr(player, 'used_mana_this_turn', False): return jsonify({'error': 'Mana already charged this turn'}), 400
+        player.hand.remove(card_to_process)
+        player.mana_zone.append(card_to_process)
         player.used_mana_this_turn = True
-        if hasattr(card, 'civilizations') and len(card.civilizations) == 1:
-            player.available_mana += 1
-        return jsonify({
-            'status': 'ok',
-            'last_played_card': card.to_dict()
-        })
-
-    elif zone == 'no-zone':
-        player.hand.remove(card)
-        player.no_zone.append(card)
-        return jsonify({'status': 'ok', 'last_played_card': card.to_dict()})
-
-    # その他のゾーン不明
+    elif zone == 'battle':
+        card_index = player.hand.index(card_to_process)
+        play_card_H(game_state_obj, card_index) # あなたの既存のプレイロジック
     else:
         return jsonify({'error': f'Unknown zone: {zone}'}), 400
 
-@app.route('/api/choose_card', methods=['POST'])
-def choose_card():
-    print("[choose_card]",
-          "pending_choice:", game.pending_choice,
-          "pending_choice_player:", getattr(game, 'pending_choice_player', None),
-          "purpose:",           getattr(game, 'choice_purpose', None),
-          "candidates:",        [c.name for c in getattr(game, 'choice_candidates', [])])
+    if save_game_state(TEMP_GAME_ID, game_state_obj):
+        return jsonify({'status': 'ok'})
+    return jsonify({'error': 'Failed to save game state'}), 500
 
-    if not getattr(game, 'pending_choice', False):
+
+@app.route('/api/choose_card', methods=['POST'])
+def choose_card_adapter():
+    # --- ▼▼▼ アダプター処理の追加 ▼▼▼ ---
+    # 1. データベースから現在のゲーム状態を読み込む
+    game_db_entry, game_state_obj = load_game_state(TEMP_GAME_ID)
+    if not game_state_obj:
+        return jsonify({'error': 'Game not found'}), 404
+    # --- ▲▲▲ アダプター処理ここまで ▲▲▲ ---
+
+    # 以降、グローバル変数 `game` の代わりに `game_state_obj` を使用する
+    
+    print("[choose_card]",
+          "pending_choice:", game_state_obj.pending_choice,
+          "pending_choice_player:", getattr(game_state_obj, 'pending_choice_player', None),
+          "purpose:",           getattr(game_state_obj, 'choice_purpose', None),
+          "candidates:",        [c.name for c in getattr(game_state_obj, 'choice_candidates', [])])
+
+    if not getattr(game_state_obj, 'pending_choice', False):
         return jsonify({'error': 'no pending choice'}), 400
 
     data      = request.get_json() or {}
     card_id   = data.get('card_id')
     purpose   = data.get('purpose')
-    # フェーズ①（dedodam）では purpose が "hand"/"mana"、
-    # フェーズ②（maruru second）では purpose が "hand_or_mana"、
-    # それ以外のときは zone=None で OK
     zone      = data.get('zone') or purpose
-    candidates = getattr(game, 'choice_candidates', [])
+    candidates = getattr(game_state_obj, 'choice_candidates', [])
     selected   = next((c for c in candidates if c.id == card_id), None)
     if not selected:
         return jsonify({'error': 'card not found'}), 400
 
-    player = game.players[game.turn_player]
+    player = game_state_obj.players[game_state_obj.turn_player]
 
     def clear_pending():
-        game.pending_choice        = False
-        game.choice_candidates     = []
-        game.choice_purpose        = None
-        game.pending_choice_player = None
+        game_state_obj.pending_choice        = False
+        game_state_obj.choice_candidates     = []
+        game_state_obj.choice_purpose        = None
+        game_state_obj.pending_choice_player = None
 
-    # ── フェーズ①：デドダム効果（山札上3枚振り分け） ──
-    if game.dedodam_state:
-        top_cards = game.dedodam_state["top_three"]
+    # --- デドダム効果の処理 ---
+    if game_state_obj.dedodam_state:
+        top_cards = game_state_obj.dedodam_state["top_three"]
 
-        # ── 第1選択：3枚から手札へ ──
         if len(top_cards) == 3 and zone == "hand":
             player.hand.append(selected)
-            # 残り2枚を次のマナ振りフェーズへ
             remaining = [c for c in top_cards if c.id != card_id]
-            game.dedodam_state["top_three"]     = remaining
-            game.pending_choice                = True
-            game.pending_choice_player         = game.turn_player
-            game.choice_candidates             = remaining.copy()
-            game.choice_purpose                = "mana"
+            game_state_obj.dedodam_state["top_three"] = remaining
+            game_state_obj.pending_choice            = True
+            game_state_obj.pending_choice_player     = game_state_obj.turn_player
+            game_state_obj.choice_candidates         = remaining.copy()
+            game_state_obj.choice_purpose            = "mana"
+            
+            save_game_state(TEMP_GAME_ID, game_state_obj) # 状態を保存
             return jsonify({'status': 'pending_mana'})
 
-        # ── 第2選択：2枚からマナへ（残り1枚は自動的に墓地へ） ──
         if len(top_cards) == 2 and zone == "mana":
             player.mana_zone.append(selected)
-            # 残り1枚を墓地へ
             last = next(c for c in top_cards if c.id != card_id)
             player.graveyard.append(last)
-            # クリーンアップ
-            game.dedodam_state        = None
+            game_state_obj.dedodam_state = None
             clear_pending()
+            
+            save_game_state(TEMP_GAME_ID, game_state_obj) # 状態を保存
             return jsonify({'status': 'ok'})
-
-        # ── 想定外ルート：選択されたカードを墓地へ ──
-        player.graveyard.append(selected)
-        game.dedodam_state = None
-        clear_pending()
-        return jsonify({'status': 'ok'})
-
-    # ── フェーズ②：マルル二段階目効果の選択処理 ──
+    
+    # --- マルル効果の処理 ---
     if purpose == "hand_or_mana":
         if zone == "hand":
             player.hand.append(selected)
         else:
             player.mana_zone.append(selected)
         clear_pending()
+        
+        save_game_state(TEMP_GAME_ID, game_state_obj) # 状態を保存
         return jsonify({'status': 'ok'})
     
+    # --- ツインパクトのモード選択処理 ---
     if purpose == "twimpact_mode":
         mode = data.get("mode")
         if mode not in ("creature", "spell"):
             clear_pending()
+            save_game_state(TEMP_GAME_ID, game_state_obj)
             return jsonify({'error': 'invalid mode'}), 400
 
         idx = next((i for i, c in enumerate(player.hand) if c.id == card_id), None)
         if idx is None:
             clear_pending()
+            save_game_state(TEMP_GAME_ID, game_state_obj)
             return jsonify({'error': 'card not found in hand'}), 400
 
-        try:
-            if mode == "creature":
-                play_as_creature(player, player.hand[idx], idx)
-                last_played_card = player.battle_zone[-1].to_dict()
-            else:
-                play_as_spell(player, player.hand[idx], idx)
-                last_played_card = player.graveyard[-1].to_dict()
-        except Exception as e:
-            print(f"[ERROR] twimpact_mode: {e}")
-            clear_pending()
-            return jsonify({'error': f'exception in twimpact_mode: {e}'}), 500
+        # play_as_creature/spell は game_state_obj を変更する
+        if mode == "creature":
+            play_as_creature(player, player.hand[idx], idx)
+            last_played_card = player.battle_zone[-1].to_dict()
+        else:
+            play_as_spell(player, player.hand[idx], idx)
+            last_played_card = player.graveyard[-1].to_dict()
 
         clear_pending()
+        save_game_state(TEMP_GAME_ID, game_state_obj) # 状態を保存
         return jsonify({'status': 'ok', 'last_played_card': last_played_card})
 
-    # ── 通常の hand/mana/grave ブロック ──
-    if purpose == 'hand':
-        player.hand.append(selected)
+    # --- その他の汎用的な選択処理 ---
+    if purpose in ['hand', 'mana', 'grave']:
+        if purpose == 'hand': player.hand.append(selected)
+        if purpose == 'mana': player.mana_zone.append(selected)
+        if purpose == 'grave': player.graveyard.append(selected)
         clear_pending()
-        return jsonify({'status': 'ok'})
-    if purpose == 'mana':
-        player.mana_zone.append(selected)
-        clear_pending()
-        return jsonify({'status': 'ok'})
-    if purpose == 'grave':
-        player.graveyard.append(selected)
-        clear_pending()
+        
+        save_game_state(TEMP_GAME_ID, game_state_obj) # 状態を保存
         return jsonify({'status': 'ok'})
 
-    # ── フォールバック ──
+    # --- フォールバック ---
     clear_pending()
+    save_game_state(TEMP_GAME_ID, game_state_obj)
     return jsonify({'error': 'invalid purpose'}), 400
 
-@app.route('/api/set_mana', methods=['POST'])
-def set_mana():
-    data = request.get_json()
-    card_id = data.get('cardId')
-    player = game.players[game.turn_player]
 
-    if any(c.id == card_id for c in player.mana_zone):
-        return jsonify({'status': 'already_added'})
+@app.route('/api/state', methods=['GET'])
+def get_state_adapter():
+    """ゲーム状態を取得するAPI（アダプター版）"""
+    _, game_state_obj = load_game_state(TEMP_GAME_ID)
+    if not game_state_obj:
+        # もしゲームが存在しない場合、新しいゲームを作成して返す（初回アクセス用）
+        # この部分は、あなたのフロントエンドがどういう挙動を期待するかで調整します
+        new_game_response = start_new_game()
+        if isinstance(new_game_response, tuple) and new_game_response[1] == 201:
+             _, game_state_obj = load_game_state(TEMP_GAME_ID)
+        else:
+            return jsonify({'error': 'Failed to create or load game'}), 500
 
-    card = next((c for c in player.hand if c.id == card_id), None)
-    if not card:
-        return jsonify({'error': 'Card not found in hand'}), 404
-
-    player.hand.remove(card)
-    player.mana_zone.append(card)
-    if hasattr(card, 'civilizations') and len(card.civilizations) == 1:
-        player.available_mana += 1
-
-    return jsonify({'status': 'ok'})
-
-@app.route('/api/games/<int:game_id>/state', methods=['GET'])
-def get_game_state(game_id):
-    # データベースから指定されたIDのゲームを探す
-    game_from_db = Game.query.get(game_id)
-    if not game_from_db:
-        return jsonify({'error': 'Game not found'}), 404
-
-    # 保存されているJSON文字列からゲーム状態を復元する
-    import json
-    current_game_state = json.loads(game_from_db.game_state_json)
-
-    # 復元したゲーム状態をクライアントに返す
-    return jsonify(current_game_state)
-
-@app.route('/api/games/<int:game_id>/end_turn', methods=['POST'])
-def end_turn_api(game_id):
-    """特定のゲームのターンを終了し、状態をデータベースに保存するAPI"""
-    game_db_entry = Game.query.get(game_id)
-    if not game_db_entry:
-        return jsonify({'error': 'Game not found'}), 404
-
-    game_state_obj = GameState.from_dict(json.loads(game_db_entry.game_state_json))
+    # フロントエンドが期待する形式でデータを整形して返す
+    # あなたのGameBoard.tsxに合わせてキー名を調整
+    player = game_state_obj.players[0]
+    opponent = game_state_obj.players[1]
     
-    # 既存のターン終了ロジックを実行
-    end_turn(game_state_obj)
+    response_data = {
+        "hand": [c.to_dict() for c in player.hand],
+        "battleZone": [c.to_dict() for c in player.battle_zone],
+        "manaZone": [c.to_dict() for c in player.mana_zone],
+        "shieldZone": [c.to_dict() for c in player.shields],
+        "graveyard": [c.to_dict() for c in player.graveyard],
+        "deck": [c.to_dict() for c in player.deck], # フロントエンドでデッキ枚数表示に使うため
+        "availableMana": player.available_mana,
 
-    # 変更されたゲーム状態を直接JSONに変換してデータベースに保存
-    # これで "updated_game_state_dict" が未定義というエラーが解消されます
-    game_db_entry.game_state_json = json.dumps(game_state_obj.to_dict(), ensure_ascii=False)
-    
-    # 次のターンプレイヤーのIDを正しく取得
-    next_turn_player_index = game_state_obj.turn_player
-    if next_turn_player_index == 0:
-        next_turn_player_id = game_db_entry.player1_id
-    else:
-        next_turn_player_id = game_db_entry.player2_id
-    
-    game_db_entry.current_turn_player_id = next_turn_player_id
-    db.session.commit()
+        "opponentBattleZone": [c.to_dict() for c in opponent.battle_zone],
+        "opponentShieldZone": [c.to_dict() for c in opponent.shields],
+        "opponentManaZone": [c.to_dict() for c in opponent.mana_zone],
+        "opponentGraveyard": [c.to_dict() for c in opponent.graveyard],
+        "opponentDeck": [c.to_dict() for c in opponent.deck],
+        "opponentHandCount": len(opponent.hand),
+        "opponentAvailableMana": opponent.available_mana,
 
-    return jsonify({
-        'message': f'Game {game_id} turn ended.',
-        'new_turn_player_index': game_state_obj.turn_player
-    })
+        "turnPlayer": game_state_obj.turn_player,
+        "usedManaThisTurn": player.used_mana_this_turn,
+        
+        # 選択待ちの状態もフロントエンドに渡す
+        "pendingChoice": game_state_obj.pending_choice,
+        "choiceCandidates": [c.to_dict() for c in game_state_obj.choice_candidates],
+        "choicePurpose": game_state_obj.choice_purpose,
+    }
+    return jsonify(response_data)
+
+@app.route('/api/end_turn', methods=['POST'])
+def end_turn_api_adapter():
+    game_state_obj = load_game_state(TEMP_GAME_ID)
+    if not game_state_obj: return jsonify({'error': 'Game not found'}), 404
+    end_turn(game_state_obj) # あなたの既存のロジックを呼び出し
+    if save_game_state(TEMP_GAME_ID, game_state_obj):
+        return jsonify({'status': 'ok'})
+    return jsonify({'error': 'Failed to save game state'}), 500
 
 # Flask 側
 @app.route('/api/ai_take_turn', methods=['POST'])

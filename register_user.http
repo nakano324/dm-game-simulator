@@ -1,6 +1,6 @@
 ### (1) 新しい対戦を開始するAPIテスト
-# このリクエストは、ユーザーID 1番と2番で新しい対戦を開始するようサーバーに依頼します。
-# "Send Request" をクリックすると、右側に結果が表示されます。
+# まず、このリクエストを送信して、テスト用の対戦（game_id: 1）を作成します。
+# "Send Request" をクリックしてください。
 
 POST https://dm-game-sim-api-new.onrender.com/api/games/new
 Content-Type: application/json
@@ -10,15 +10,12 @@ Content-Type: application/json
     "player2_id": 2
 }
 
+### --------------------------------------------------
 
-### (2) ユーザー登録APIテスト（参考）
-# こちらは以前作成したユーザー登録のテストです。
+### (2) ターン終了APIテスト
+# 次に、上で作成した対戦（game_id: 1）のターンを終了させます。
+# URLの最後の "1" がゲームIDに対応しています。
+# "Send Request" をクリックしてください。
 
-POST https://dm-game-sim-api-new.onrender.com/api/register
-Content-Type: application/json
-
-{
-    "email": "test-user-3@example.com",
-    "password": "secure_password_123"
-}
+POST https://dm-game-sim-api-new.onrender.com/api/games/1/end_turn
 
