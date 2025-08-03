@@ -30,6 +30,20 @@ class Card:
             d['attacked'] = self.id in attacked_creatures
         return d
 
+
+
+    @classmethod
+    def from_dict(cls, data):
+        # TODO: 将来的にはtwimpactも正しく復元できるようにする
+        # 今は基本的なCardクラスとして復元する
+        return cls(
+            name=data.get('name'),
+            cost=data.get('cost'),
+            power=data.get('power'),
+            card_type=data.get('card_type'),
+            civilizations=data.get('civilizations', [])
+        )
+
     def __init__(self, name, cost, power, card_type, civilizations, on_end_of_turn=None, species=None, on_play=None, abilities=None,on_attack=None,image_url=""):
         self.name = name
         self.cost = cost
@@ -99,6 +113,29 @@ class PlayerState:
         self.played_card_without_mana = False
         self.no_zone = []  # どこでもないゾーン
 
+    def to_dict(self):
+        return {
+            "name": self.name,
+            "deck": [c.to_dict() for c in self.deck],
+            "hand": [c.to_dict() for c in self.hand],
+            "mana_zone": [c.to_dict() for c in self.mana_zone],
+            "battle_zone": [c.to_dict() for c in self.battle_zone],
+            "shields": [c.to_dict() for c in self.shields],
+            "graveyard": [c.to_dict() for c in self.graveyard],
+        }
+
+    # 辞書からPlayerStateオブジェクトを復元するクラスメソッド
+    @classmethod
+    def from_dict(cls, data):
+        deck = [Card.from_dict(c_data) for c_data in data.get('deck', [])]
+        player = cls(name=data.get('name'), deck=deck)
+        player.hand = [Card.from_dict(c_data) for c_data in data.get('hand', [])]
+        player.mana_zone = [Card.from_dict(c_data) for c_data in data.get('mana_zone', [])]
+        player.battle_zone = [Card.from_dict(c_data) for c_data in data.get('battle_zone', [])]
+        player.shields = [Card.from_dict(c_data) for c_data in data.get('shields', [])]
+        player.graveyard = [Card.from_dict(c_data) for c_data in data.get('graveyard', [])]
+        return player
+
 
 class GameState:
     def __init__(self, player1, player2, turn_player=0):
@@ -112,6 +149,23 @@ class GameState:
         self.choice_callback = None  # 選択結果を受け取るコールバック
         self.dedodam_state = None
         self.pending_choice_player = None
+
+    def to_dict(self):
+        return {
+            "players": [p.to_dict() for p in self.players],
+            "turn_player_index": self.turn_player,
+            "turn_count": self.turn_count,
+        }
+
+    # 辞書からGameStateオブジェクトを復元するクラスメソッド
+    @classmethod
+    def from_dict(cls, data):
+        player1 = PlayerState.from_dict(data['players'][0])
+        player2 = PlayerState.from_dict(data['players'][1])
+        game = cls(player1, player2)
+        game.turn_player = data.get('turn_player_index', 0)
+        game.turn_count = data.get('turn_count', 0)
+        return game
 
     def is_opponent_turn(self, player):
         return self.players[self.turn_player] != player
@@ -1837,15 +1891,36 @@ def get_game_state(game_id):
     # 復元したゲーム状態をクライアントに返す
     return jsonify(current_game_state)
 
-@app.route('/api/end_turn', methods=['POST'])
-def end_turn_api():
-    end_turn(game)
-    current_player = game.players[game.turn_player]
-    if getattr(current_player, "is_ai", False):
-        # ここでAIターンに突入したことだけ返し、「AIの行動は後から行う」方式にする
-        # → 一時的にAI行動をスキップ
-        return jsonify({'status': 'ai_turn'})
-    return jsonify({'status': 'ok'})
+@app.route('/api/games/<int:game_id>/end_turn', methods=['POST'])
+def end_turn_api(game_id):
+    """特定のゲームのターンを終了し、状態をデータベースに保存するAPI"""
+    game_db_entry = Game.query.get(game_id)
+    if not game_db_entry:
+        return jsonify({'error': 'Game not found'}), 404
+
+    game_state_obj = GameState.from_dict(json.loads(game_db_entry.game_state_json))
+    
+    # 既存のターン終了ロジックを実行
+    end_turn(game_state_obj)
+
+    # 変更されたゲーム状態を直接JSONに変換してデータベースに保存
+    # これで "updated_game_state_dict" が未定義というエラーが解消されます
+    game_db_entry.game_state_json = json.dumps(game_state_obj.to_dict(), ensure_ascii=False)
+    
+    # 次のターンプレイヤーのIDを正しく取得
+    next_turn_player_index = game_state_obj.turn_player
+    if next_turn_player_index == 0:
+        next_turn_player_id = game_db_entry.player1_id
+    else:
+        next_turn_player_id = game_db_entry.player2_id
+    
+    game_db_entry.current_turn_player_id = next_turn_player_id
+    db.session.commit()
+
+    return jsonify({
+        'message': f'Game {game_id} turn ended.',
+        'new_turn_player_index': game_state_obj.turn_player
+    })
 
 # Flask 側
 @app.route('/api/ai_take_turn', methods=['POST'])
