@@ -1633,18 +1633,12 @@ def take_turn(game):
                 print("無効なインデックスです。もう一度入力してください。\n")
 
 app = Flask(__name__)
-CORS(app, resources={r"/api/*": {"origins": "http://localhost:5173"}}, supports_credentials=True)
+CORS(app, resources={r"/api/*": {"origins": "*"}})
 
 # ▼▼ データベース設定 ▼▼
-app.config['SQLALCHEMY_DATABASE_URI'] = 'postgresql://dm_game_sim_api_new_db_user:t9pyd4ecejTKPSLhJBNZhtDNm5pn1t5d@dpg-d1q7osnfte5s73d1p7m0-a/dm_game_sim_api_new_db'
+app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL')
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-
-# ▼▼ アプリとデータベースを連携 ▼▼
 db.init_app(app)
-
-# --- 4. テーブル自動作成（シェル不要の解決策） ---
-# このブロックが、サーバー起動時にテーブルが存在するか確認し、
-# なければ自動的に作成してくれます。
 with app.app_context():
     db.create_all()
 
@@ -1869,138 +1863,125 @@ def end_turn_api_adapter():
 
 # Flask 側
 @app.route('/api/ai_take_turn', methods=['POST'])
-def ai_take_turn():
-    # 1. ドローだけ実行
-    player = game.players[game.turn_player]
-    start_turn(game)
-    game.turn_started = True
-    time.sleep(0.8)
-    # 2. マナチャージ
-    ai.choose_mana_card(game)
-    time.sleep(0.8)
-    # 3. プレイ
-    ai.play_cards(game)
-    time.sleep(0.8)
-    # 4. 攻撃
-    ai.attack(game)
-    time.sleep(0.8)
-    # 5. エンド
-    end_turn(game)
-    return jsonify({'status': 'ok'})
+def ai_take_turn_adapter():
+    _, game_state_obj = load_game_state(TEMP_GAME_ID)
+    if not game_state_obj: return jsonify({'error': 'Game not found'}), 404
+
+    # 既存のAIターン実行関数を呼び出す
+    # take_turn関数がgame_state_objを直接変更する
+    take_turn(game_state_obj)
+
+    if save_game_state(TEMP_GAME_ID, game_state_obj):
+        return jsonify({'status': 'ok'})
+    return jsonify({'error': 'Failed to save game state'}), 500
 
 @app.route("/api/attack", methods=["POST"])
-def attack_api():
+def attack_api_adapter():
+    _, game_state_obj = load_game_state(TEMP_GAME_ID)
+    if not game_state_obj: return jsonify({'error': 'Game not found'}), 404
+
     data = request.json
     attacker_id = data.get("attackerId")
     target_id = data.get("targetId")
-    player = game.players[game.turn_player]
-    opponent = game.players[1 - game.turn_player]
+    player = game_state_obj.players[game_state_obj.turn_player]
+    opponent = game_state_obj.players[1 - game_state_obj.turn_player]
 
-    # 攻撃元・攻撃対象のカードオブジェクト取得
     attacker = next((c for c in player.battle_zone if c.id == attacker_id), None)
-    target = None
-    if target_id in [c.id for c in opponent.battle_zone]:
-        target = next((c for c in opponent.battle_zone if c.id == target_id), None)
-    elif target_id in [c.id for c in opponent.shields]:
-        target = next((c for c in opponent.shields if c.id == target_id), None)
-
     if not attacker:
         return jsonify(success=False, message="攻撃元カードが見つかりません"), 400
 
-    # クリーチャーへの攻撃
-    if target and target in opponent.battle_zone:
-        attack_target(game, attacker, target)
-    # シールドへの攻撃
-    elif target and target in opponent.shields:
-        attack_target(game, attacker, None)
-    else:
-        return jsonify(success=False, message="攻撃対象が見つかりません"), 400
+    target = None
+    if target_id:
+        # 攻撃対象がクリーチャーかシールドかを判定
+        target_creature = next((c for c in opponent.battle_zone if c.id == target_id), None)
+        target_shield = next((c for c in opponent.shields if c.id == target_id), None)
+        target = target_creature or target_shield
 
-    return jsonify(success=True)
+    # 既存の攻撃ロジックを呼び出す
+    attack_target(game_state_obj, attacker, target)
+
+    if save_game_state(TEMP_GAME_ID, game_state_obj):
+        return jsonify(success=True)
+    return jsonify(success=False, message="Failed to save game state"), 500
 
 @app.route('/api/attack_shield', methods=['POST'])
-def attack_shield():
+def attack_shield_adapter():
+    _, game_state_obj = load_game_state(TEMP_GAME_ID)
+    if not game_state_obj: return jsonify({'error': 'Game not found'}), 404
+        
     data = request.get_json()
     attacker_id = data.get('attackerId')
     shield_id = data.get('shieldId')
     
-    player = game.players[game.turn_player]
-    opponent = game.players[1 - game.turn_player]
+    player = game_state_obj.players[game_state_obj.turn_player]
+    opponent = game_state_obj.players[1 - game_state_obj.turn_player]
 
-    print('attacker_id:', attacker_id)
-    print('player.battle_zone:', [c.id for c in player.battle_zone])
-    print('shield_id:', shield_id)
-    print('opponent.shields:', [c.id for c in opponent.shields])
-    
-    # 攻撃するクリーチャーを探す
     attacker = next((c for c in player.battle_zone if c.id == attacker_id), None)
-    if not attacker:
-        return jsonify({'error': '攻撃するクリーチャーが見つかりません'}), 404
+    if not attacker: return jsonify({'error': 'Attacker not found'}), 404
         
-    # シールドを探す
     shield = next((c for c in opponent.shields if c.id == shield_id), None)
-    if not shield:
-        return jsonify({'error': '対象のシールドが見つかりません'}), 404
+    if not shield: return jsonify({'error': 'Shield not found'}), 404
         
-    # シールドを破壊
+    # 既存のロジックを呼び出す
     opponent.shields.remove(shield)
-    
-    # シールドトリガーの処理
-    trigger_used = resolve_shield_trigger(opponent, shield, game)
-    
+    trigger_used = resolve_shield_trigger(opponent, shield, game_state_obj) # game_state_objを渡す
     if not trigger_used:
         opponent.hand.append(shield)
     
-    # 攻撃済みフラグを設定
     player.attacked_creatures.append(attacker.id)
     
-    return jsonify({'status': 'ok'})
+    if save_game_state(TEMP_GAME_ID, game_state_obj):
+        return jsonify({'status': 'ok'})
+    return jsonify({'error': 'Failed to save game state'}), 500
 
 @app.route('/api/mana_to_hand', methods=['POST'])
-def mana_to_hand():
+def mana_to_hand_adapter():
+    _, game_state_obj = load_game_state(TEMP_GAME_ID)
+    if not game_state_obj: return jsonify({'error': 'Game not found'}), 404
+    
     data = request.get_json()
     card_id = data.get('cardId')
-    player = game.players[game.turn_player]
+    player = game_state_obj.players[game_state_obj.turn_player]
 
-    # マナゾーンからカードを探す
     card = next((c for c in player.mana_zone if c.id == card_id), None)
-    if not card:
-        return jsonify({'error': 'Card not found in mana zone'}), 404
+    if not card: return jsonify({'error': 'Card not found in mana zone'}), 404
 
     player.mana_zone.remove(card)
     player.hand.append(card)
-    # 使用可能マナも調整（単色なら-1、多色はそのまま）
-    if hasattr(card, 'civilizations') and len(card.civilizations) == 1:
-        player.available_mana = max(0, player.available_mana - 1)
 
-    return jsonify({'status': 'ok', 'last_added_card': card.to_dict()})
+    if save_game_state(TEMP_GAME_ID, game_state_obj):
+        return jsonify({'status': 'ok', 'last_added_card': card.to_dict()})
+    return jsonify({'error': 'Failed to save game state'}), 500
 
 @app.route('/api/graveyard_to_mana', methods=['POST'])
-def graveyard_to_mana():
+def graveyard_to_mana_adapter():
+    _, game_state_obj = load_game_state(TEMP_GAME_ID)
+    if not game_state_obj: return jsonify({'error': 'Game not found'}), 404
+
     data = request.get_json()
     card_id = data.get('cardId')
-    player = game.players[game.turn_player]
+    player = game_state_obj.players[game_state_obj.turn_player]
 
-    # 墓地からカードを探す
     card = next((c for c in player.graveyard if c.id == card_id), None)
     if not card:
         return jsonify({'error': 'Card not found in graveyard'}), 404
 
     player.graveyard.remove(card)
     player.mana_zone.append(card)
-    # 単色ならavailable_manaを+1
-    if hasattr(card, 'civilizations') and len(card.civilizations) == 1:
-        player.available_mana += 1
 
-    return jsonify({'status': 'ok', 'last_added_card': card.to_dict()})
+    if save_game_state(TEMP_GAME_ID, game_state_obj):
+        return jsonify({'status': 'ok', 'last_added_card': card.to_dict()})
+    return jsonify({'error': 'Failed to save game state'}), 500
 
 @app.route('/api/graveyard_to_hand', methods=['POST'])
-def graveyard_to_hand():
+def graveyard_to_hand_adapter():
+    _, game_state_obj = load_game_state(TEMP_GAME_ID)
+    if not game_state_obj: return jsonify({'error': 'Game not found'}), 404
+
     data = request.get_json()
     card_id = data.get('cardId')
-    player = game.players[game.turn_player]
+    player = game_state_obj.players[game_state_obj.turn_player]
 
-    # 墓地からカードを探す
     card = next((c for c in player.graveyard if c.id == card_id), None)
     if not card:
         return jsonify({'error': 'Card not found in graveyard'}), 404
@@ -2008,40 +1989,43 @@ def graveyard_to_hand():
     player.graveyard.remove(card)
     player.hand.append(card)
 
-    return jsonify({'status': 'ok', 'last_added_card': card.to_dict()})
+    if save_game_state(TEMP_GAME_ID, game_state_obj):
+        return jsonify({'status': 'ok', 'last_added_card': card.to_dict()})
+    return jsonify({'error': 'Failed to save game state'}), 500
+
 
 # 既存の /api/... 定義の下あたりに追記してください
-
 @app.route('/api/card_action', methods=['POST'])
-def card_action():
-    data = request.get_json() or {}
-    action = data.get('action')      # 'bounce' | 'destroy' | 'mana'
-    card_id = data.get('cardId')
-    player = game.players[game.turn_player]
+def card_action_adapter():
+    _, game_state_obj = load_game_state(TEMP_GAME_ID)
+    if not game_state_obj: return jsonify({'error': 'Game not found'}), 404
 
-    # バトルゾーンから対象カードを探す
+    data = request.get_json() or {}
+    action = data.get('action')
+    card_id = data.get('cardId')
+    player = game_state_obj.players[game_state_obj.turn_player]
+
     target = next((c for c in player.battle_zone if c.id == card_id), None)
     if not target:
         return jsonify({'error': 'Card not found in battle zone'}), 404
 
-    # remove_creature 関数を呼び出し
-    if action == 'destroy':
-        remove_creature(player, target, kind='destroy')
-    elif action == 'bounce':
-        remove_creature(player, target, kind='bounce')
-    elif action == 'mana':
-        remove_creature(player, target, kind='mana_send')
-    else:
-        return jsonify({'error': 'Invalid action'}), 400
+    # 既存のremove_creature関数を呼び出し
+    if action == 'destroy': remove_creature(player, target, kind='destroy')
+    elif action == 'bounce': remove_creature(player, target, kind='bounce')
+    elif action == 'mana': remove_creature(player, target, kind='mana_send')
+    else: return jsonify({'error': 'Invalid action'}), 400
 
-    # 状態を最新化して返却
-    return jsonify({
-        'status': 'ok',
-        'battle_zone': [c.to_dict() for c in player.battle_zone],
-        'mana_zone':    [c.to_dict() for c in player.mana_zone],
-        'hand':         [c.to_dict() for c in player.hand],
-        'graveyard':    [c.to_dict() for c in player.graveyard],
-    })
+    if save_game_state(TEMP_GAME_ID, game_state_obj):
+        # フロントエンドが期待する形式で最新の状態を返す
+        return jsonify({
+            'status': 'ok',
+            'battle_zone': [c.to_dict() for c in player.battle_zone],
+            'mana_zone': [c.to_dict() for c in player.mana_zone],
+            'hand': [c.to_dict() for c in player.hand],
+            'graveyard': [c.to_dict() for c in player.graveyard],
+        })
+    return jsonify({'error': 'Failed to save game state'}), 500
+
 
 @app.route('/')
 def index():
