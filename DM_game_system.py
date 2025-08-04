@@ -3,6 +3,8 @@ from flask_cors import CORS
 from database import db   # 追加
 from models import User, Deck, Game
 
+import os
+
 import json
 
 import random
