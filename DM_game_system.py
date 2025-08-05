@@ -1808,22 +1808,42 @@ def choose_card_adapter():
     save_game_state(TEMP_GAME_ID, game_state_obj)
     return jsonify({'error': 'invalid purpose'}), 400
 
+@app.route('/api/reset_game', methods=['POST'])
+def reset_game():
+    """テスト用の対戦データを強制的に作成・リセットするAPI"""
+    existing_game = Game.query.get(TEMP_GAME_ID)
+    if existing_game:
+        db.session.delete(existing_game)
+        db.session.commit()
 
-@app.route('/api/state', methods=['GET'])
-def get_state_adapter():
-    """ゲーム状態を取得するAPI（アダプター版）"""
-    _, game_state_obj = load_game_state(TEMP_GAME_ID)
+    player1_id, player2_id = 1, 2 # 仮のID
+    temp_deck_data = [Card(f"仮カード{i}", i % 5 + 1, (i % 5 + 1) * 1000, "creature", ["光"]) for i in range(40)]
+    player1 = PlayerState(name=f"User_{player1_id}", deck=list(temp_deck_data))
+    player2 = PlayerState(name=f"User_{player2_id}", deck=list(temp_deck_data))
+    initial_game_state = GameState(player1, player2)
+    for p in initial_game_state.players:
+        random.shuffle(p.deck)
+        p.shields = [p.deck.pop() for _ in range(5)]
+        p.hand = [p.deck.pop() for _ in range(5)]
+    
+    new_game = Game(
+        id=TEMP_GAME_ID, player1_id=player1_id, player2_id=player2_id,
+        current_turn_player_id=player1_id,
+        game_state_json=json.dumps(initial_game_state.to_dict(), ensure_ascii=False)
+    )
+    db.session.add(new_game)
+    db.session.commit()
+    return jsonify({'message': f'Game {TEMP_GAME_ID} has been created/reset.'}), 201
+
+@app.route('/api/games/<int:game_id>/state', methods=['GET'])
+def get_state(game_id):
+    """特定のゲーム状態を取得するAPI（複数対戦対応版）"""
+    _, game_state_obj = load_game_state(game_id)
     if not game_state_obj:
-        # もしゲームが存在しない場合、新しいゲームを作成して返す（初回アクセス用）
-        # この部分は、あなたのフロントエンドがどういう挙動を期待するかで調整します
-        new_game_response = start_new_game()
-        if isinstance(new_game_response, tuple) and new_game_response[1] == 201:
-             _, game_state_obj = load_game_state(TEMP_GAME_ID)
-        else:
-            return jsonify({'error': 'Failed to create or load game'}), 500
+        return jsonify({'error': f'Game with id {game_id} not found'}), 404
 
     # フロントエンドが期待する形式でデータを整形して返す
-    # あなたのGameBoard.tsxに合わせてキー名を調整
+    # TODO: どちらのプレイヤー視点かを判別し、相手の手札は見せないようにする
     player = game_state_obj.players[0]
     opponent = game_state_obj.players[1]
     
@@ -1833,7 +1853,7 @@ def get_state_adapter():
         "manaZone": [c.to_dict() for c in player.mana_zone],
         "shieldZone": [c.to_dict() for c in player.shields],
         "graveyard": [c.to_dict() for c in player.graveyard],
-        "deck": [c.to_dict() for c in player.deck], # フロントエンドでデッキ枚数表示に使うため
+        "deck": [c.to_dict() for c in player.deck],
         "availableMana": player.available_mana,
 
         "opponentBattleZone": [c.to_dict() for c in opponent.battle_zone],
@@ -1847,7 +1867,6 @@ def get_state_adapter():
         "turnPlayer": game_state_obj.turn_player,
         "usedManaThisTurn": player.used_mana_this_turn,
         
-        # 選択待ちの状態もフロントエンドに渡す
         "pendingChoice": game_state_obj.pending_choice,
         "choiceCandidates": [c.to_dict() for c in game_state_obj.choice_candidates],
         "choicePurpose": game_state_obj.choice_purpose,
