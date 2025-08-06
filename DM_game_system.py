@@ -1850,11 +1850,11 @@ def get_state_adapter():
         "hand": [c.to_dict() for c in player.hand],
         "battleZone": [c.to_dict(player.attacked_creatures) for c in player.battle_zone],
         "manaZone": [c.to_dict() for c in player.mana_zone],
-        "shieldZone": player.shields, # フロントエンドは完全なカード情報を期待している
+        "shieldZone": [c.to_dict() for c in player.shields], # フロントエンドは完全なカード情報を期待
         "graveyard": [c.to_dict() for c in player.graveyard],
         "deckCount": len(player.deck),
         "opponentBattleZone": [c.to_dict(opponent.attacked_creatures) for c in opponent.battle_zone],
-        "opponentShieldZone": opponent.shields, # フロントエンドは完全なカード情報を期待している
+        "opponentShieldZone": [c.to_dict() for c in opponent.shields], # フロントエンドは完全なカード情報を期待
         "opponentManaZone": [c.to_dict() for c in opponent.mana_zone],
         "opponentGraveyard": [c.to_dict() for c in opponent.graveyard],
         "opponentDeckCount": len(opponent.deck),
