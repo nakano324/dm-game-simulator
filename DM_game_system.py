@@ -1837,7 +1837,7 @@ def reset_game():
 
 @app.route('/api/state', methods=['GET'])
 def get_state_adapter():
-    """ゲーム状態を取得するAPI。フロントエンドのキー名に合わせる。"""
+    """ゲーム状態を取得するAPI。データがなければエラーを返す。"""
     _, game_state_obj = load_game_state(TEMP_GAME_ID)
     if not game_state_obj:
         return jsonify({'error': 'Game not found. Please POST to /api/reset_game first.'}), 404
@@ -1845,7 +1845,7 @@ def get_state_adapter():
     player = game_state_obj.players[0]
     opponent = game_state_obj.players[1]
     
-    # フロントエンドが期待するキャメルケースのキー名でデータを返す
+    # フロントエンドが期待する形式でデータを返す
     return jsonify({
         "hand": [c.to_dict() for c in player.hand],
         "battleZone": [c.to_dict(player.attacked_creatures) for c in player.battle_zone],
