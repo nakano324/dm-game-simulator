@@ -1837,7 +1837,7 @@ def reset_game():
 
 @app.route('/api/state', methods=['GET'])
 def get_state_adapter():
-    """ゲーム状態を取得するAPI。データがなければエラーを返す。"""
+    """ゲーム状態を取得するAPI。フロントエンドのキー名に合わせる。"""
     _, game_state_obj = load_game_state(TEMP_GAME_ID)
     if not game_state_obj:
         return jsonify({'error': 'Game not found. Please POST to /api/reset_game first.'}), 404
@@ -1845,16 +1845,16 @@ def get_state_adapter():
     player = game_state_obj.players[0]
     opponent = game_state_obj.players[1]
     
-    # フロントエンドが期待する形式でデータを返す
+    # フロントエンドが期待するキャメルケースのキー名でデータを返す
     return jsonify({
         "hand": [c.to_dict() for c in player.hand],
         "battleZone": [c.to_dict(player.attacked_creatures) for c in player.battle_zone],
         "manaZone": [c.to_dict() for c in player.mana_zone],
-        "shieldZone": [c.to_dict() for c in player.shields], # フロントエンドは完全なカード情報を期待
+        "shieldZone": [c.to_dict() for c in player.shields],
         "graveyard": [c.to_dict() for c in player.graveyard],
         "deckCount": len(player.deck),
         "opponentBattleZone": [c.to_dict(opponent.attacked_creatures) for c in opponent.battle_zone],
-        "opponentShieldZone": [c.to_dict() for c in opponent.shields], # フロントエンドは完全なカード情報を期待
+        "opponentShieldZone": [c.to_dict() for c in opponent.shields],
         "opponentManaZone": [c.to_dict() for c in opponent.mana_zone],
         "opponentGraveyard": [c.to_dict() for c in opponent.graveyard],
         "opponentDeckCount": len(opponent.deck),
