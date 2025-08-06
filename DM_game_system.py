@@ -116,14 +116,17 @@ class PlayerState:
         self.no_zone = []  # どこでもないゾーン
 
     def to_dict(self):
+        battle_zone_dict = [c.to_dict(self.attacked_creatures) for c in self.battle_zone]
         return {
             "name": self.name,
             "deck": [c.to_dict() for c in self.deck],
             "hand": [c.to_dict() for c in self.hand],
             "mana_zone": [c.to_dict() for c in self.mana_zone],
-            "battle_zone": [c.to_dict() for c in self.battle_zone],
+            "battle_zone": battle_zone_dict,
             "shields": [c.to_dict() for c in self.shields],
             "graveyard": [c.to_dict() for c in self.graveyard],
+            "used_mana_this_turn": self.used_mana_this_turn,
+            "attacked_creatures": self.attacked_creatures
         }
 
     # 辞書からPlayerStateオブジェクトを復元するクラスメソッド
@@ -1837,7 +1840,7 @@ def reset_game():
 
 @app.route('/api/state', methods=['GET'])
 def get_state_adapter():
-    """ゲーム状態を取得するAPI。データがなければエラーを返す。"""
+    """ゲーム状態を取得するAPI。フロントエンドのキー名(snake_case)に合わせる。"""
     _, game_state_obj = load_game_state(TEMP_GAME_ID)
     if not game_state_obj:
         return jsonify({'error': 'Game not found. Please POST to /api/reset_game first.'}), 404
@@ -1845,22 +1848,22 @@ def get_state_adapter():
     player = game_state_obj.players[0]
     opponent = game_state_obj.players[1]
     
-    # フロントエンドが期待する形式でデータを返す
+    # フロントエンドが期待するスネークケースのキー名でデータを返す
     return jsonify({
         "hand": [c.to_dict() for c in player.hand],
-        "battleZone": [c.to_dict(player.attacked_creatures) for c in player.battle_zone],
-        "manaZone": [c.to_dict() for c in player.mana_zone],
-        "shieldZone": [c.to_dict() for c in player.shields],
+        "battle_zone": [c.to_dict(player.attacked_creatures) for c in player.battle_zone],
+        "mana_zone": [c.to_dict() for c in player.mana_zone],
+        "shield_zone": [c.to_dict() for c in player.shields],
         "graveyard": [c.to_dict() for c in player.graveyard],
-        "deckCount": len(player.deck),
-        "opponentBattleZone": [c.to_dict(opponent.attacked_creatures) for c in opponent.battle_zone],
-        "opponentShieldZone": [c.to_dict() for c in opponent.shields],
-        "opponentManaZone": [c.to_dict() for c in opponent.mana_zone],
-        "opponentGraveyard": [c.to_dict() for c in opponent.graveyard],
-        "opponentDeckCount": len(opponent.deck),
-        "opponentHandCount": len(opponent.hand),
-        "turnPlayer": game_state_obj.turn_player,
-        "usedManaThisTurn": player.used_mana_this_turn,
+        "deck_count": len(player.deck),
+        "opponent_battle_zone": [c.to_dict(opponent.attacked_creatures) for c in opponent.battle_zone],
+        "opponent_shield_zone": [c.to_dict() for c in opponent.shields],
+        "opponent_mana_zone": [c.to_dict() for c in opponent.mana_zone],
+        "opponent_graveyard": [c.to_dict() for c in opponent.graveyard],
+        "opponent_deck_count": len(opponent.deck),
+        "opponent_hand_count": len(opponent.hand),
+        "turn_player": game_state_obj.turn_player,
+        "used_mana_this_turn": player.used_mana_this_turn,
     })
 
 @app.route('/api/end_turn', methods=['POST'])
