@@ -1816,7 +1816,7 @@ def reset_game():
         db.session.delete(existing_game)
         db.session.commit()
 
-    player1_id, player2_id = 1, 2 # 仮のID
+    player1_id, player2_id = 1, 2
     temp_deck_data = [Card(f"仮カード{i}", i % 5 + 1, (i % 5 + 1) * 1000, "creature", ["光"]) for i in range(40)]
     player1 = PlayerState(name=f"User_{player1_id}", deck=list(temp_deck_data))
     player2 = PlayerState(name=f"User_{player2_id}", deck=list(temp_deck_data))
@@ -1835,43 +1835,33 @@ def reset_game():
     db.session.commit()
     return jsonify({'message': f'Game {TEMP_GAME_ID} has been created/reset.'}), 201
 
-@app.route('/api/games/<int:game_id>/state', methods=['GET'])
-def get_state(game_id):
-    """特定のゲーム状態を取得するAPI（複数対戦対応版）"""
-    _, game_state_obj = load_game_state(game_id)
+@app.route('/api/state', methods=['GET'])
+def get_state_adapter():
+    """ゲーム状態を取得するAPI。データがなければエラーを返す。"""
+    _, game_state_obj = load_game_state(TEMP_GAME_ID)
     if not game_state_obj:
-        return jsonify({'error': f'Game with id {game_id} not found'}), 404
+        return jsonify({'error': 'Game not found. Please POST to /api/reset_game first.'}), 404
 
-    # フロントエンドが期待する形式でデータを整形して返す
-    # TODO: どちらのプレイヤー視点かを判別し、相手の手札は見せないようにする
     player = game_state_obj.players[0]
     opponent = game_state_obj.players[1]
     
-    response_data = {
+    # フロントエンドが期待する形式でデータを返す
+    return jsonify({
         "hand": [c.to_dict() for c in player.hand],
-        "battleZone": [c.to_dict() for c in player.battle_zone],
+        "battleZone": [c.to_dict(player.attacked_creatures) for c in player.battle_zone],
         "manaZone": [c.to_dict() for c in player.mana_zone],
-        "shieldZone": [c.to_dict() for c in player.shields],
+        "shieldZone": player.shields, # フロントエンドは完全なカード情報を期待している
         "graveyard": [c.to_dict() for c in player.graveyard],
-        "deck": [c.to_dict() for c in player.deck],
-        "availableMana": player.available_mana,
-
-        "opponentBattleZone": [c.to_dict() for c in opponent.battle_zone],
-        "opponentShieldZone": [c.to_dict() for c in opponent.shields],
+        "deckCount": len(player.deck),
+        "opponentBattleZone": [c.to_dict(opponent.attacked_creatures) for c in opponent.battle_zone],
+        "opponentShieldZone": opponent.shields, # フロントエンドは完全なカード情報を期待している
         "opponentManaZone": [c.to_dict() for c in opponent.mana_zone],
         "opponentGraveyard": [c.to_dict() for c in opponent.graveyard],
-        "opponentDeck": [c.to_dict() for c in opponent.deck],
+        "opponentDeckCount": len(opponent.deck),
         "opponentHandCount": len(opponent.hand),
-        "opponentAvailableMana": opponent.available_mana,
-
         "turnPlayer": game_state_obj.turn_player,
         "usedManaThisTurn": player.used_mana_this_turn,
-        
-        "pendingChoice": game_state_obj.pending_choice,
-        "choiceCandidates": [c.to_dict() for c in game_state_obj.choice_candidates],
-        "choicePurpose": game_state_obj.choice_purpose,
-    }
-    return jsonify(response_data)
+    })
 
 @app.route('/api/end_turn', methods=['POST'])
 def end_turn_api_adapter():

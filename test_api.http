@@ -1,0 +1,19 @@
+### (1) ゲームをリセット・初期化するAPI
+# このリクエストを最初に一度だけ送信することで、
+# データベース上の対戦データがきれいな初期状態になります。
+# 下の "Send Request" をクリックしてください。
+
+POST https://dm-game-sim-api-new.onrender.com/api/reset_game
+
+### --------------------------------------------------
+
+### (参考) ユーザー登録API
+# 新しいユーザーを登録したい場合に使います。
+
+POST https://dm-game-sim-api-new.onrender.com/api/register
+Content-Type: application/json
+
+{
+    "email": "test-user-5@example.com",
+    "password": "secure_password_123"
+}
