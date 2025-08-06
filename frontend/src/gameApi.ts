@@ -161,7 +161,7 @@ export function fetchGameState(setters: Setters) {
       setAvailableMana(data.available_mana ?? 0);
       setOpponentAvailableMana(data.opponent_available_mana ?? 0);
       setGraveyard(data.graveyard ?? []);
-      setOpponentGraveyard(data.opponent_opponent_graveyard ?? []);
+      setOpponentGraveyard(data.opponent_graveyard ?? []);
       setDeck(data.deck ?? []);
       setOpponentDeck(data.opponent_deck ?? []);
       setUsedManaThisTurn(data.used_mana_this_turn ?? false);

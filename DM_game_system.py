@@ -1840,30 +1840,33 @@ def reset_game():
 
 @app.route('/api/state', methods=['GET'])
 def get_state_adapter():
-    """ゲーム状態を取得するAPI。データがなければエラーを返す。"""
-    _, game_state_obj = load_game_state(TEMP_GAME_ID)
+    game_state_obj = load_game_state(TEMP_GAME_ID)
     if not game_state_obj:
         return jsonify({'error': 'Game not found. Please POST to /api/reset_game first.'}), 404
 
     player = game_state_obj.players[0]
     opponent = game_state_obj.players[1]
     
-    # フロントエンドが期待する形式でデータを返す
+    # フロントエンドが期待するスネークケースのキー名で、かつ完全なデッキ情報を含めて返す
     return jsonify({
         "hand": [c.to_dict() for c in player.hand],
-        "battleZone": [c.to_dict(player.attacked_creatures) for c in player.battle_zone],
-        "manaZone": [c.to_dict() for c in player.mana_zone],
-        "shieldZone": [c.to_dict() for c in player.shields],
+        "battle_zone": [c.to_dict(player.attacked_creatures) for c in player.battle_zone],
+        "mana_zone": [c.to_dict() for c in player.mana_zone],
+        "shield_zone": [c.to_dict() for c in player.shields],
         "graveyard": [c.to_dict() for c in player.graveyard],
-        "deckCount": len(player.deck),
-        "opponentBattleZone": [c.to_dict(opponent.attacked_creatures) for c in opponent.battle_zone],
-        "opponentShieldZone": [c.to_dict() for c in opponent.shields],
-        "opponentManaZone": [c.to_dict() for c in opponent.mana_zone],
-        "opponentGraveyard": [c.to_dict() for c in opponent.graveyard],
-        "opponentDeckCount": len(opponent.deck),
-        "opponentHandCount": len(opponent.hand),
-        "turnPlayer": game_state_obj.turn_player,
-        "usedManaThisTurn": player.used_mana_this_turn,
+        "deck": [c.to_dict() for c in player.deck], # デッキの完全なリストを返す
+        "available_mana": player.available_mana,
+
+        "opponent_battle_zone": [c.to_dict(opponent.attacked_creatures) for c in opponent.battle_zone],
+        "opponent_shield_zone": [c.to_dict() for c in opponent.shields],
+        "opponent_mana_zone": [c.to_dict() for c in opponent.mana_zone],
+        "opponent_graveyard": [c.to_dict() for c in opponent.graveyard],
+        "opponent_deck": [c.to_dict() for c in opponent.deck], # 相手のデッキも完全なリストを返す
+        "opponent_hand_count": len(opponent.hand),
+        "opponent_available_mana": opponent.available_mana,
+
+        "turn_player": game_state_obj.turn_player,
+        "used_mana_this_turn": player.used_mana_this_turn,
     })
 
 @app.route('/api/end_turn', methods=['POST'])
@@ -1878,7 +1881,7 @@ def end_turn_api_adapter():
 # Flask 側
 @app.route('/api/ai_take_turn', methods=['POST'])
 def ai_take_turn_adapter():
-    _, game_state_obj = load_game_state(TEMP_GAME_ID)
+    game_state_obj = load_game_state(TEMP_GAME_ID)
     if not game_state_obj: return jsonify({'error': 'Game not found'}), 404
 
     # 既存のAIターン実行関数を呼び出す
@@ -1891,7 +1894,7 @@ def ai_take_turn_adapter():
 
 @app.route("/api/attack", methods=["POST"])
 def attack_api_adapter():
-    _, game_state_obj = load_game_state(TEMP_GAME_ID)
+    game_state_obj = load_game_state(TEMP_GAME_ID)
     if not game_state_obj: return jsonify({'error': 'Game not found'}), 404
 
     data = request.json
@@ -1920,7 +1923,7 @@ def attack_api_adapter():
 
 @app.route('/api/attack_shield', methods=['POST'])
 def attack_shield_adapter():
-    _, game_state_obj = load_game_state(TEMP_GAME_ID)
+    game_state_obj = load_game_state(TEMP_GAME_ID)
     if not game_state_obj: return jsonify({'error': 'Game not found'}), 404
         
     data = request.get_json()
@@ -1950,7 +1953,7 @@ def attack_shield_adapter():
 
 @app.route('/api/mana_to_hand', methods=['POST'])
 def mana_to_hand_adapter():
-    _, game_state_obj = load_game_state(TEMP_GAME_ID)
+    game_state_obj = load_game_state(TEMP_GAME_ID)
     if not game_state_obj: return jsonify({'error': 'Game not found'}), 404
     
     data = request.get_json()
@@ -1969,7 +1972,7 @@ def mana_to_hand_adapter():
 
 @app.route('/api/graveyard_to_mana', methods=['POST'])
 def graveyard_to_mana_adapter():
-    _, game_state_obj = load_game_state(TEMP_GAME_ID)
+    game_state_obj = load_game_state(TEMP_GAME_ID)
     if not game_state_obj: return jsonify({'error': 'Game not found'}), 404
 
     data = request.get_json()
@@ -1989,7 +1992,7 @@ def graveyard_to_mana_adapter():
 
 @app.route('/api/graveyard_to_hand', methods=['POST'])
 def graveyard_to_hand_adapter():
-    _, game_state_obj = load_game_state(TEMP_GAME_ID)
+    game_state_obj = load_game_state(TEMP_GAME_ID)
     if not game_state_obj: return jsonify({'error': 'Game not found'}), 404
 
     data = request.get_json()
@@ -2011,7 +2014,7 @@ def graveyard_to_hand_adapter():
 # 既存の /api/... 定義の下あたりに追記してください
 @app.route('/api/card_action', methods=['POST'])
 def card_action_adapter():
-    _, game_state_obj = load_game_state(TEMP_GAME_ID)
+    game_state_obj = load_game_state(TEMP_GAME_ID)
     if not game_state_obj: return jsonify({'error': 'Game not found'}), 404
 
     data = request.get_json() or {}
