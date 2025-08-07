@@ -11,6 +11,14 @@ import random
 
 import uuid
 
+from flask_jwt_extended import create_access_token, jwt_required, get_jwt_identity, JWTManager
+
+app = Flask(__name__)
+
+# JWTの秘密鍵を設定 (必ずセキュアな文字列に変更してください)
+app.config["JWT_SECRET_KEY"] = os.environ.get('JWT_SECRET_KEY', 'my-super-secret-key-for-dev') 
+jwt = JWTManager(app)
+
 class Card:
     id_counter = iter(range(1, 1000000))
 
@@ -2273,29 +2281,6 @@ def save_game_state(game_id, game_state_obj):
         print("--- Game state SAVE successful! ---")
         return True
 
-# load_game_state 関数の最終形
-def load_game_state(game_id):
-    print(f"--- Attempting to LOAD game state for ID: {game_id} ---")
-    try:
-        game_db_entry = Game.query.get(game_id)
-        if not game_db_entry:
-            print(f"[ERROR] Game with ID {game_id} not found in database during LOAD.")
-            return None
-        print(f"--- Raw JSON loaded from DB: {game_db_entry.game_state_json[:500]} ...")
-        game_state_data = json.loads(game_db_entry.game_state_json)
-        game_state_obj = GameState.from_dict(game_state_data)
-        if game_state_obj and game_state_obj.players:
-             player0_hand = getattr(game_state_obj.players[0], 'hand', [])
-             player0_hand_ids = [card.id for card in player0_hand]
-             print(f"--- Hand IDs in loaded state (Player 0): {player0_hand_ids}")
-        print("--- Game state LOAD successful! ---")
-        return game_state_obj
-    except Exception as e:
-        print(f"[ERROR] Failed to load and parse game state: {e}")
-        import traceback
-        traceback.print_exc()
-        return None
-
 def load_game_state(game_id):
     print(f"--- Attempting to LOAD game state for ID: {game_id} ---")
     
@@ -2754,26 +2739,39 @@ def index():
 
 @app.route('/api/register', methods=['POST'])
 def register_user():
-    """ユーザーを新規登録するためのAPI"""
     data = request.get_json()
-
-    # 入力データ（メールアドレスとパスワード）があるかチェック
     if not data or not data.get('email') or not data.get('password'):
         return jsonify({'error': 'emailとpasswordは必須です'}), 400
 
-    # メールアドレスが既にデータベースに存在するかチェック
     if User.query.filter_by(email=data['email']).first():
         return jsonify({'error': 'このメールアドレスは既に使用されています'}), 409
 
-    # 新しいユーザーのデータを作成
     new_user = User(email=data['email'])
-    new_user.set_password(data['password']) # パスワードは暗号化して保存
-
-    # データベースに新しいユーザーを追加して保存
+    new_user.set_password(data['password']) # set_passwordメソッドでハッシュ化
+    
     db.session.add(new_user)
     db.session.commit()
 
     return jsonify({'message': 'ユーザー登録が成功しました', 'user_id': new_user.id}), 201
+
+@app.route('/api/login', methods=['POST'])
+def login():
+    data = request.get_json()
+    if not data or not data.get('email') or not data.get('password'):
+        return jsonify({"error": "emailとpasswordは必須です"}), 400
+
+    email = data.get('email')
+    password = data.get('password')
+
+    user = User.query.filter_by(email=email).first()
+
+    # ユーザーが存在し、かつパスワードが正しいかチェック
+    if user and user.check_password(password):
+        # IDを元に入館証（アクセストークン）を生成
+        access_token = create_access_token(identity=user.id)
+        return jsonify(access_token=access_token)
+    
+    return jsonify({"error": "メールアドレスまたはパスワードが正しくありません"}), 401
 
 @app.route('/api/games/new', methods=['POST'])
 def start_new_game():
