@@ -2634,6 +2634,13 @@ def card_action_adapter():
         })
     return jsonify({'error': 'Failed to save game state'}), 500
 
+@app.route('/')
+def health_check():
+    """
+    サーバーが正常に起動しているかを確認するための
+    最もシンプルなテスト用エンドポイント
+    """
+    return "Flask server is running!"
 
 @app.route('/')
 def index():
