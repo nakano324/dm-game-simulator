@@ -2228,14 +2228,34 @@ with app.app_context():
 TEMP_GAME_ID = 1 # TODO: 将来的には動的に変更
 
 def save_game_state(game_id, game_state_obj):
-    game_db_entry = Game.query.get(game_id)
-    if not game_db_entry: return False
-    next_turn_idx = game_state_obj.turn_player
-    next_turn_id = game_db_entry.player1_id if next_turn_idx == 0 else game_db_entry.player2_id
-    game_db_entry.game_state_json = json.dumps(game_state_obj.to_dict(), ensure_ascii=False)
-    game_db_entry.current_turn_player_id = next_turn_id
-    db.session.commit()
-    return True
+    print(f"--- Attempting to SAVE game state for ID: {game_id} ---")
+    
+    try:
+        game_db_entry = Game.query.get(game_id)
+        if not game_db_entry:
+            print(f"[ERROR] Game with ID {game_id} not found in database.")
+            return False
+
+        next_turn_idx = game_state_obj.turn_player
+        next_turn_id = game_db_entry.player1_id if next_turn_idx == 0 else game_db_entry.player2_id
+        
+        # ゲーム状態をJSON形式の文字列に変換して保存
+        game_db_entry.game_state_json = json.dumps(game_state_obj.to_dict(), ensure_ascii=False)
+        game_db_entry.current_turn_player_id = next_turn_id
+        
+        # データベースへの変更を確定
+        db.session.commit()
+
+    except Exception as e:
+        # 保存処理中に何らかのエラーが発生した場合
+        db.session.rollback()  # 変更を元に戻す
+        print(f"[ERROR] Database commit failed: {e}")
+        return False
+        
+    else:
+        # tryブロックがエラーなく完了した場合
+        print("--- Game state SAVE successful! ---")
+        return True
 
 def load_game_state(game_id):
     game_db_entry = Game.query.get(game_id)
