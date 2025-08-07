@@ -173,7 +173,7 @@ const GameBoard: React.FC = () => {
     );
     if (battleEl) {
       const defenderId = battleEl.id.replace('target-card-battle-', '');
-      api.post('/api/attack', {
+      api.post('/attack', {
         attackerId: draggingFromId!.replace('card-', ''),
         defenderId,
       })
@@ -215,7 +215,7 @@ const GameBoard: React.FC = () => {
     // 手札からバトルゾーンへの移動
     if (active.data.current?.zone === 'hand' && over.id === 'battlezone') {
       console.log('バトルゾーンへの移動を実行:', { cardId, zone: 'battle' });
-      api.post('/api/drop_card', { cardId, zone: 'battle' })
+      api.post('/drop_card', { cardId, zone: 'battle' })
         .then(res => {
           const lastCard = res.data.last_played_card;
           if (lastCard) {
@@ -237,7 +237,7 @@ const GameBoard: React.FC = () => {
         alert('このターンはすでにマナチャージしています');
         return;
       }
-      api.post('/api/drop_card', { cardId, zone: 'mana' })
+      api.post('/drop_card', { cardId, zone: 'mana' })
         .then(res => {
           console.log('カードをマナゾーンに配置:', res.data);
         })
@@ -264,7 +264,7 @@ const GameBoard: React.FC = () => {
     }
     // マナゾーンから手札への移動
     else if (active.data.current?.zone === 'mana' && over.id === 'hand-dropzone') {
-      api.post('/api/mana_to_hand', { cardId })
+      api.post('/mana_to_hand', { cardId })
         .then(res => {
           console.log('カードを手札に戻しました:', res.data);
         })
@@ -283,7 +283,7 @@ const GameBoard: React.FC = () => {
       const cardId = typeof active.id === 'string' && active.id.startsWith('card-') 
         ? active.id.replace('card-', '') 
         : active.id;
-      api.post('/api/graveyard_to_hand', { cardId })
+      api.post('/graveyard_to_hand', { cardId })
         .then(fetchState);
     }
     // 墓地からマナゾーンへの移動
@@ -294,7 +294,7 @@ const GameBoard: React.FC = () => {
       const cardId = typeof active.id === 'string' && active.id.startsWith('card-') 
         ? active.id.replace('card-', '') 
         : active.id;
-      api.post('/api/graveyard_to_mana', { cardId })
+      api.post('/graveyard_to_mana', { cardId })
         .then(fetchState)
         .catch(err => {
           console.error('マナゾーンへの配置エラー:', err.response?.data?.error || err);
@@ -372,7 +372,7 @@ const renderAttackArrow = () => {
   const { setNodeRef: setHandDropRef, isOver: isHandOver } = useDroppable({ id: 'hand-dropzone' });
 
   const handleEndTurn = () => {
-  api.post('/api/end_turn')
+  api.post('/end_turn')
     .then(fetchState)
     .catch(err => alert('ターン終了に失敗しました'));
 };
@@ -392,7 +392,7 @@ useEffect(() => {
   const handleShieldAttack = (cardId: string) => {
   setShowShieldChoiceModal(false);
 
-  api.post('/api/attack_shield', {
+  api.post('/attack_shield', {
     attackerId: attackingCardId?.replace('target-card-battle-', ''),
     shieldId: cardId
   })

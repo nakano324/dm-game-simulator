@@ -1677,6 +1677,19 @@ def drop_card_api_adapter():
     data = request.get_json()
     card_id, zone = data.get('cardId'), data.get('zone')
     player = game_state_obj.players[game_state_obj.turn_player]
+
+    print("--- /api/drop_card DEBUG START ---")
+    print(f"Turn Player: {player.name}")
+    print(f"Searching for Card ID from Frontend: {card_id}")
+    
+    # 現在のバックエンドの手札にある全カードのIDをリストで表示
+    backend_hand_ids = [c.id for c in player.hand]
+    print(f"Backend Hand Contains these IDs: {backend_hand_ids}")
+    
+    id_found = card_id in backend_hand_ids
+    print(f"Is the ID found in backend's hand?: {id_found}")
+    print("--- /api/drop_card DEBUG END ---")
+    
     card_to_process = next((c for c in player.hand if c.id == card_id), None)
     if not card_to_process: return jsonify({'error': 'Card not found in hand'}), 404
 
