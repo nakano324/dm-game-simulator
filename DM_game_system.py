@@ -32,19 +32,35 @@ class Card:
             d['attacked'] = self.id in attacked_creatures
         return d
 
-
-
     @classmethod
     def from_dict(cls, data):
-        # TODO: 将来的にはtwimpactも正しく復元できるようにする
-        # 今は基本的なCardクラスとして復元する
-        return cls(
-            name=data.get('name'),
-            cost=data.get('cost'),
-            power=data.get('power'),
-            card_type=data.get('card_type'),
-            civilizations=data.get('civilizations', [])
-        )
+        # twimpactカードと通常のカードを正しく復元
+        if data.get('card_type') == 'twimpact':
+            card = twimpact(
+                name=data.get('name'),
+                creature_name=data.get('creature_name'),
+                spell_name=data.get('spell_name'),
+                creature_cost=data.get('creature_cost'),
+                spell_cost=data.get('spell_cost'),
+                power=data.get('power'),
+                creature_civilizations=data.get('creature_civilizations', []),
+                spell_civilizations=data.get('spell_civilizations', []),
+                creature_abilities=data.get('creature_abilities', []),
+                spell_abilities=data.get('spell_abilities', [])
+            )
+        else:
+            card = cls(
+                name=data.get('name'),
+                cost=data.get('cost'),
+                power=data.get('power'),
+                card_type=data.get('card_type'),
+                civilizations=data.get('civilizations', []),
+                abilities=data.get('abilities', [])
+            )
+        # IDや他の状態も復元
+        card.id = data.get('id', str(uuid.uuid4()))
+        card.summoned_this_turn = data.get('summoned_this_turn', False)
+        return card
 
     def __init__(self, name, cost, power, card_type, civilizations, on_end_of_turn=None, species=None, on_play=None, abilities=None,on_attack=None,image_url=""):
         self.name = name
@@ -132,13 +148,18 @@ class PlayerState:
     # 辞書からPlayerStateオブジェクトを復元するクラスメソッド
     @classmethod
     def from_dict(cls, data):
-        deck = [Card.from_dict(c_data) for c_data in data.get('deck', [])]
-        player = cls(name=data.get('name'), deck=deck)
-        player.hand = [Card.from_dict(c_data) for c_data in data.get('hand', [])]
-        player.mana_zone = [Card.from_dict(c_data) for c_data in data.get('mana_zone', [])]
-        player.battle_zone = [Card.from_dict(c_data) for c_data in data.get('battle_zone', [])]
-        player.shields = [Card.from_dict(c_data) for c_data in data.get('shields', [])]
-        player.graveyard = [Card.from_dict(c_data) for c_data in data.get('graveyard', [])]
+        player = cls(name=data['name'], deck=[]) # Deckは空で初期化
+        
+        # 各ゾーンのカードをCard.from_dictを使って復元
+        player.hand = [Card.from_dict(c) for c in data.get('hand', [])]
+        player.mana_zone = [Card.from_dict(c) for c in data.get('mana_zone', [])]
+        player.battle_zone = [Card.from_dict(c) for c in data.get('battle_zone', [])]
+        player.shields = [Card.from_dict(c) for c in data.get('shields', [])]
+        player.graveyard = [Card.from_dict(c) for c in data.get('graveyard', [])]
+        
+        # その他の状態も復元
+        player.available_mana = data.get('available_mana', 0)
+        player.used_mana_this_turn = data.get('used_mana_this_turn', False)
         return player
 
 
@@ -161,15 +182,20 @@ class GameState:
             "turn_player_index": self.turn_player,
             "turn_count": self.turn_count,
         }
-
-    # 辞書からGameStateオブジェクトを復元するクラスメソッド
+    
     @classmethod
     def from_dict(cls, data):
-        player1 = PlayerState.from_dict(data['players'][0])
-        player2 = PlayerState.from_dict(data['players'][1])
-        game = cls(player1, player2)
-        game.turn_player = data.get('turn_player_index', 0)
+        # PlayerState.from_dictを使ってプレイヤーを復元
+        players = [PlayerState.from_dict(p) for p in data.get('players', [])]
+        if len(players) < 2: # プレイヤーが2人いない場合はエラーを防ぐ
+            return None 
+
+        game = cls(player1=players[0], player2=players[1], turn_player=data.get('turn_player', 0))
+        
+        # その他のゲーム状態も復元
         game.turn_count = data.get('turn_count', 0)
+        # (必要に応じて pending_choice などの状態も復元)
+        
         return game
 
     def is_opponent_turn(self, player):
