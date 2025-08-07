@@ -2,7 +2,7 @@ from flask import Flask, request, jsonify, Response
 from flask_cors import CORS
 from database import db   # 追加
 from models import User, Deck, Game
-
+import urllib.parse
 import os
 
 import json
@@ -2641,6 +2641,20 @@ def health_check():
     最もシンプルなテスト用エンドポイント
     """
     return "Flask server is running!"
+
+@app.route('/debug-routes')
+def list_routes():
+    """
+    Flaskが認識している全てのURLルールをリストアップして表示する
+    """
+    output = []
+    for rule in app.url_map.iter_rules():
+        methods = ','.join(rule.methods)
+        line = urllib.parse.unquote(f"{rule.endpoint:50s} {methods:20s} {rule.rule}")
+        output.append(line)
+
+    # 整形してプレーンテキストとして返す
+    return "<pre>" + "\n".join(sorted(output)) + "</pre>"
 
 @app.route('/')
 def index():
