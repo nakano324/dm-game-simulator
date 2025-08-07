@@ -2255,33 +2255,46 @@ TEMP_GAME_ID = 1 # TODO: 将来的には動的に変更
 
 def save_game_state(game_id, game_state_obj):
     print(f"--- Attempting to SAVE game state for ID: {game_id} ---")
-    
     try:
         game_db_entry = Game.query.get(game_id)
         if not game_db_entry:
             print(f"[ERROR] Game with ID {game_id} not found in database.")
             return False
-
         next_turn_idx = game_state_obj.turn_player
         next_turn_id = game_db_entry.player1_id if next_turn_idx == 0 else game_db_entry.player2_id
-        
-        # ゲーム状態をJSON形式の文字列に変換して保存
         game_db_entry.game_state_json = json.dumps(game_state_obj.to_dict(), ensure_ascii=False)
         game_db_entry.current_turn_player_id = next_turn_id
-        
-        # データベースへの変更を確定
         db.session.commit()
-
     except Exception as e:
-        # 保存処理中に何らかのエラーが発生した場合
-        db.session.rollback()  # 変更を元に戻す
+        db.session.rollback()
         print(f"[ERROR] Database commit failed: {e}")
         return False
-        
     else:
-        # tryブロックがエラーなく完了した場合
         print("--- Game state SAVE successful! ---")
         return True
+
+# load_game_state 関数の最終形
+def load_game_state(game_id):
+    print(f"--- Attempting to LOAD game state for ID: {game_id} ---")
+    try:
+        game_db_entry = Game.query.get(game_id)
+        if not game_db_entry:
+            print(f"[ERROR] Game with ID {game_id} not found in database during LOAD.")
+            return None
+        print(f"--- Raw JSON loaded from DB: {game_db_entry.game_state_json[:500]} ...")
+        game_state_data = json.loads(game_db_entry.game_state_json)
+        game_state_obj = GameState.from_dict(game_state_data)
+        if game_state_obj and game_state_obj.players:
+             player0_hand = getattr(game_state_obj.players[0], 'hand', [])
+             player0_hand_ids = [card.id for card in player0_hand]
+             print(f"--- Hand IDs in loaded state (Player 0): {player0_hand_ids}")
+        print("--- Game state LOAD successful! ---")
+        return game_state_obj
+    except Exception as e:
+        print(f"[ERROR] Failed to load and parse game state: {e}")
+        import traceback
+        traceback.print_exc()
+        return None
 
 def load_game_state(game_id):
     print(f"--- Attempting to LOAD game state for ID: {game_id} ---")
