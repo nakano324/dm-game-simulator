@@ -2258,9 +2258,41 @@ def save_game_state(game_id, game_state_obj):
         return True
 
 def load_game_state(game_id):
-    game_db_entry = Game.query.get(game_id)
-    if not game_db_entry: return None
-    return GameState.from_dict(json.loads(game_db_entry.game_state_json))
+    print(f"--- Attempting to LOAD game state for ID: {game_id} ---")
+    
+    try:
+        game_db_entry = Game.query.get(game_id)
+        if not game_db_entry:
+            print(f"[ERROR] Game with ID {game_id} not found in database during LOAD.")
+            return None
+
+        # 1. データベースから読み込んだ生のJSONデータをログに出力
+        #    (長すぎる場合を考慮し、先頭500文字だけ表示)
+        print(f"--- Raw JSON loaded from DB: {game_db_entry.game_state_json[:500]} ...")
+
+        # 2. JSON文字列をPythonの辞書オブジェクトに変換
+        game_state_data = json.loads(game_db_entry.game_state_json)
+
+        # 3. 辞書オブジェクトからGameStateオブジェクトを復元
+        #    (重要：この from_dict メソッドがGameStateクラスに定義されている必要があります)
+        game_state_obj = GameState.from_dict(game_state_data)
+
+        # 4. 復元したオブジェクトの手札IDをログに出力
+        if game_state_obj and game_state_obj.players:
+             player0_hand = getattr(game_state_obj.players[0], 'hand', [])
+             player0_hand_ids = [card.id for card in player0_hand]
+             print(f"--- Hand IDs in loaded state (Player 0): {player0_hand_ids}")
+        
+        print("--- Game state LOAD successful! ---")
+        return game_state_obj
+
+    except Exception as e:
+        # 読み込みや復元処理中に何らかのエラーが発生した場合
+        print(f"[ERROR] Failed to load and parse game state: {e}")
+        # スタックトレース全体を出力すると、より詳細な原因がわかります
+        import traceback
+        traceback.print_exc()
+        return None
 
 # デバッグモードを有効化
 app.debug = True
