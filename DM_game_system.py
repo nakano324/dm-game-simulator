@@ -668,6 +668,584 @@ def jaouga_attack_effect(player, game):
 # サンプルカード（本来はもっと多くの種類を定義）
 import importlib
 
+sample_deck = [
+    twimpact(
+        name="肉付きマナ送り/ブースト",
+        creature_name="配球の超人", spell_name="記録的剛球",
+        creature_cost=8, spell_cost=2, power=14000,
+        civilizations=["緑"], creature_civilizations=["緑"], spell_civilizations=["緑"],
+        creature_species=["ジャイアント"], spell_species=["ジャイアント・スキル"],
+        creature_abilities=[
+            "T・ブレイカー",
+            "■このクリーチャーが出た時、相手のクリーチャーを１体選び、持ち主のマナゾーンに置く。"
+        ],
+        spell_abilities=["山札の上から1枚マナゾーンに置く。"],
+        on_play=boost
+    ),
+
+        twimpact(
+        name="肉付きマナ送り/ブースト",
+        creature_name="配球の超人", spell_name="記録的剛球",
+        creature_cost=8, spell_cost=2, power=14000,
+        civilizations=["緑"], creature_civilizations=["緑"], spell_civilizations=["緑"],
+        creature_species=["ジャイアント"], spell_species=["ジャイアント・スキル"],
+        creature_abilities=[
+            "T・ブレイカー",
+            "■このクリーチャーが出た時、相手のクリーチャーを１体選び、持ち主のマナゾーンに置く。"
+        ],
+        spell_abilities=["山札の上から1枚マナゾーンに置く。"],
+        on_play=boost
+    ),
+
+        twimpact(
+        name="肉付きマナ送り/ブースト",
+        creature_name="配球の超人", spell_name="記録的剛球",
+        creature_cost=8, spell_cost=2, power=14000,
+        civilizations=["緑"], creature_civilizations=["緑"], spell_civilizations=["緑"],
+        creature_species=["ジャイアント"], spell_species=["ジャイアント・スキル"],
+        creature_abilities=[
+            "T・ブレイカー",
+            "■このクリーチャーが出た時、相手のクリーチャーを１体選び、持ち主のマナゾーンに置く。"
+        ],
+        spell_abilities=["山札の上から1枚マナゾーンに置く。"],
+        on_play=boost
+    ),
+
+        twimpact(
+        name="肉付きマナ送り/ブースト",
+        creature_name="配球の超人", spell_name="記録的剛球",
+        creature_cost=8, spell_cost=2, power=14000,
+        civilizations=["緑"], creature_civilizations=["緑"], spell_civilizations=["緑"],
+        creature_species=["ジャイアント"], spell_species=["ジャイアント・スキル"],
+        creature_abilities=[
+            "T・ブレイカー",
+            "■このクリーチャーが出た時、相手のクリーチャーを１体選び、持ち主のマナゾーンに置く。"
+        ],
+        spell_abilities=["山札の上から1枚マナゾーンに置く。"],
+        on_play=boost
+    ),
+
+        twimpact(
+        name="肉付きマナ送り/ブースト",
+        creature_name="配球の超人", spell_name="記録的剛球",
+        creature_cost=8, spell_cost=2, power=14000,
+        civilizations=["緑"], creature_civilizations=["緑"], spell_civilizations=["緑"],
+        creature_species=["ジャイアント"], spell_species=["ジャイアント・スキル"],
+        creature_abilities=[
+            "T・ブレイカー",
+            "■このクリーチャーが出た時、相手のクリーチャーを１体選び、持ち主のマナゾーンに置く。"
+        ],
+        spell_abilities=["山札の上から1枚マナゾーンに置く。"],
+        on_play=boost
+    ),
+
+        twimpact(
+        name="肉付きマナ送り/ブースト",
+        creature_name="配球の超人", spell_name="記録的剛球",
+        creature_cost=8, spell_cost=2, power=14000,
+        civilizations=["緑"], creature_civilizations=["緑"], spell_civilizations=["緑"],
+        creature_species=["ジャイアント"], spell_species=["ジャイアント・スキル"],
+        creature_abilities=[
+            "T・ブレイカー",
+            "■このクリーチャーが出た時、相手のクリーチャーを１体選び、持ち主のマナゾーンに置く。"
+        ],
+        spell_abilities=["山札の上から1枚マナゾーンに置く。"],
+        on_play=boost
+    ),
+
+    Card(
+        name="ブースト",
+        cost=2,
+        civilizations=["緑"],
+        power=None,
+        card_type="spell",
+        abilities=[
+            "■ G・ストライク（この呪文を自分のシールドゾーンから手札に加える時、相手に見せ、相手のクリーチャーを１体選んでもよい。このターン、そのクリーチャーは攻撃できない）",
+            "■ 自分の山札の上から1枚目をマナゾーンに置く。"
+        ],
+        on_play= boost
+    ),
+
+        Card(
+        name="ブースト",
+        cost=2,
+        civilizations=["緑"],
+        power=None,
+        card_type="spell",
+        abilities=[
+            "■ G・ストライク（この呪文を自分のシールドゾーンから手札に加える時、相手に見せ、相手のクリーチャーを１体選んでもよい。このターン、そのクリーチャーは攻撃できない）",
+            "■ 自分の山札の上から1枚目をマナゾーンに置く。"
+        ],
+        on_play= boost
+    ),
+
+        Card(
+        name="ブースト",
+        cost=2,
+        civilizations=["緑"],
+        power=None,
+        card_type="spell",
+        abilities=[
+            "■ G・ストライク（この呪文を自分のシールドゾーンから手札に加える時、相手に見せ、相手のクリーチャーを１体選んでもよい。このターン、そのクリーチャーは攻撃できない）",
+            "■ 自分の山札の上から1枚目をマナゾーンに置く。"
+        ],
+        on_play= boost
+    ),
+
+        Card(
+        name="ブースト",
+        cost=2,
+        civilizations=["緑"],
+        power=None,
+        card_type="spell",
+        abilities=[
+            "■ G・ストライク（この呪文を自分のシールドゾーンから手札に加える時、相手に見せ、相手のクリーチャーを１体選んでもよい。このターン、そのクリーチャーは攻撃できない）",
+            "■ 自分の山札の上から1枚目をマナゾーンに置く。"
+        ],
+        on_play= boost
+    ),
+
+        Card(
+        name="ブースト",
+        cost=2,
+        civilizations=["緑"],
+        power=None,
+        card_type="spell",
+        abilities=[
+            "■ G・ストライク（この呪文を自分のシールドゾーンから手札に加える時、相手に見せ、相手のクリーチャーを１体選んでもよい。このターン、そのクリーチャーは攻撃できない）",
+            "■ 自分の山札の上から1枚目をマナゾーンに置く。"
+        ],
+        on_play= boost
+    ),
+
+        Card(
+        name="ブースト",
+        cost=2,
+        civilizations=["緑"],
+        power=None,
+        card_type="spell",
+        abilities=[
+            "■ G・ストライク（この呪文を自分のシールドゾーンから手札に加える時、相手に見せ、相手のクリーチャーを１体選んでもよい。このターン、そのクリーチャーは攻撃できない）",
+            "■ 自分の山札の上から1枚目をマナゾーンに置く。"
+        ],
+        on_play= boost
+    ),
+
+    Card(
+        name="天災デドダム",
+        cost=3,
+        civilizations=["緑","青","黒"],
+        power=3000,
+        card_type="creature",
+        abilities=[
+            "■ このクリーチャーが出た時、自分の山札の上から3枚を見る。そのうち1枚を手札に、1枚をマナゾーンに、残り1枚を墓地に置く。"
+        ],
+        on_play=lambda player, from_effect=False: dedodam_effect(player, from_effect=from_effect),
+        species=["トリニティ・コマンド", "侵略者"]
+    ),
+
+        Card(
+        name="天災デドダム",
+        cost=3,
+        civilizations=["緑","青","黒"],
+        power=3000,
+        card_type="creature",
+        abilities=[
+            "■ このクリーチャーが出た時、自分の山札の上から3枚を見る。そのうち1枚を手札に、1枚をマナゾーンに、残り1枚を墓地に置く。"
+        ],
+        on_play=lambda player, from_effect=False: dedodam_effect(player, from_effect=from_effect),
+        species=["トリニティ・コマンド", "侵略者"]
+    ),
+
+        Card(
+        name="天災デドダム",
+        cost=3,
+        civilizations=["緑","青","黒"],
+        power=3000,
+        card_type="creature",
+        abilities=[
+            "■ このクリーチャーが出た時、自分の山札の上から3枚を見る。そのうち1枚を手札に、1枚をマナゾーンに、残り1枚を墓地に置く。"
+        ],
+        on_play=lambda player, from_effect=False: dedodam_effect(player, from_effect=from_effect),
+        species=["トリニティ・コマンド", "侵略者"]
+    ),
+
+        Card(
+        name="天災デドダム",
+        cost=3,
+        civilizations=["緑","青","黒"],
+        power=3000,
+        card_type="creature",
+        abilities=[
+            "■ このクリーチャーが出た時、自分の山札の上から3枚を見る。そのうち1枚を手札に、1枚をマナゾーンに、残り1枚を墓地に置く。"
+        ],
+        on_play=lambda player, from_effect=False: dedodam_effect(player, from_effect=from_effect),
+        species=["トリニティ・コマンド", "侵略者"]
+    ),
+
+        Card(
+        name="天災デドダム",
+        cost=3,
+        civilizations=["緑","青","黒"],
+        power=3000,
+        card_type="creature",
+        abilities=[
+            "■ このクリーチャーが出た時、自分の山札の上から3枚を見る。そのうち1枚を手札に、1枚をマナゾーンに、残り1枚を墓地に置く。"
+        ],
+        on_play=lambda player, from_effect=False: dedodam_effect(player, from_effect=from_effect),
+        species=["トリニティ・コマンド", "侵略者"]
+    ),
+
+        Card(
+        name="天災デドダム",
+        cost=3,
+        civilizations=["緑","青","黒"],
+        power=3000,
+        card_type="creature",
+        abilities=[
+            "■ このクリーチャーが出た時、自分の山札の上から3枚を見る。そのうち1枚を手札に、1枚をマナゾーンに、残り1枚を墓地に置く。"
+        ],
+        on_play=lambda player, from_effect=False: dedodam_effect(player, from_effect=from_effect),
+        species=["トリニティ・コマンド", "侵略者"]
+    ),
+
+    Card(
+        name="ヨビニオン・マルル",
+        cost=4,
+        power=5000,
+        card_type="creature",
+        civilizations=["緑"],
+        abilities=["ヨビニオン", "2体目の召喚時にドロー/マナ効果"],
+        species="スノーフェアリー",
+        on_play= maruru_on_play
+    ),
+
+        Card(
+        name="ヨビニオン・マルル",
+        cost=4,
+        power=5000,
+        card_type="creature",
+        civilizations=["緑"],
+        abilities=["ヨビニオン", "2体目の召喚時にドロー/マナ効果"],
+        species="スノーフェアリー",
+        on_play= maruru_on_play
+    ),
+
+        Card(
+        name="ヨビニオン・マルル",
+        cost=4,
+        power=5000,
+        card_type="creature",
+        civilizations=["緑"],
+        abilities=["ヨビニオン", "2体目の召喚時にドロー/マナ効果"],
+        species="スノーフェアリー",
+        on_play= maruru_on_play
+    ),
+
+        Card(
+        name="ヨビニオン・マルル",
+        cost=4,
+        power=5000,
+        card_type="creature",
+        civilizations=["緑"],
+        abilities=["ヨビニオン", "2体目の召喚時にドロー/マナ効果"],
+        species="スノーフェアリー",
+        on_play= maruru_on_play
+    ),
+
+        Card(
+        name="ヨビニオン・マルル",
+        cost=4,
+        power=5000,
+        card_type="creature",
+        civilizations=["緑"],
+        abilities=["ヨビニオン", "2体目の召喚時にドロー/マナ効果"],
+        species="スノーフェアリー",
+        on_play= maruru_on_play
+    ),
+
+        Card(
+        name="ヨビニオン・マルル",
+        cost=4,
+        power=5000,
+        card_type="creature",
+        civilizations=["緑"],
+        abilities=["ヨビニオン", "2体目の召喚時にドロー/マナ効果"],
+        species="スノーフェアリー",
+        on_play= maruru_on_play
+    ),
+
+        Card(
+        name="ヨビニオン・マルル",
+        cost=4,
+        power=5000,
+        card_type="creature",
+        civilizations=["緑"],
+        abilities=["ヨビニオン", "2体目の召喚時にドロー/マナ効果"],
+        species="スノーフェアリー",
+        on_play= maruru_on_play
+    ),
+
+    Card(
+        name="カウンターギミック",
+        cost=6,
+        power=8000,
+        civilizations=["緑","青"],
+        card_type="creature",
+        abilities=[
+            "W・ブレイカー",
+            "相手ターン中にマナを使わずにカードを使った場合、手札から召喚可能",
+            "このクリーチャーが出た時、カードを2枚引く",
+            "自分のコスト10以上のクリーチャーのコストを4減らす（最低1）",
+            "相手のクリーチャーは出たターン自分を攻撃できない"
+        ],
+        species=["ブルー・コマンド・ドラゴン", "グリーン・コマンド・ドラゴン", "ハンター"],
+        on_play=gaiaash_on_play
+        ,on_end_of_turn= gaiaash_kaiser_end_of_turn
+    ),
+
+        Card(
+        name="カウンターギミック",
+        cost=6,
+        power=8000,
+        civilizations=["緑","青"],
+        card_type="creature",
+        abilities=[
+            "W・ブレイカー",
+            "相手ターン中にマナを使わずにカードを使った場合、手札から召喚可能",
+            "このクリーチャーが出た時、カードを2枚引く",
+            "自分のコスト10以上のクリーチャーのコストを4減らす（最低1）",
+            "相手のクリーチャーは出たターン自分を攻撃できない"
+        ],
+        species=["ブルー・コマンド・ドラゴン", "グリーン・コマンド・ドラゴン", "ハンター"],
+        on_play=gaiaash_on_play
+        ,on_end_of_turn= gaiaash_kaiser_end_of_turn
+    ),
+
+        Card(
+        name="カウンターギミック",
+        cost=6,
+        power=8000,
+        civilizations=["緑","青"],
+        card_type="creature",
+        abilities=[
+            "W・ブレイカー",
+            "相手ターン中にマナを使わずにカードを使った場合、手札から召喚可能",
+            "このクリーチャーが出た時、カードを2枚引く",
+            "自分のコスト10以上のクリーチャーのコストを4減らす（最低1）",
+            "相手のクリーチャーは出たターン自分を攻撃できない"
+        ],
+        species=["ブルー・コマンド・ドラゴン", "グリーン・コマンド・ドラゴン", "ハンター"],
+        on_play=gaiaash_on_play
+        ,on_end_of_turn= gaiaash_kaiser_end_of_turn
+    ),
+
+        Card(
+        name="カウンターギミック",
+        cost=6,
+        power=8000,
+        civilizations=["緑","青"],
+        card_type="creature",
+        abilities=[
+            "W・ブレイカー",
+            "相手ターン中にマナを使わずにカードを使った場合、手札から召喚可能",
+            "このクリーチャーが出た時、カードを2枚引く",
+            "自分のコスト10以上のクリーチャーのコストを4減らす（最低1）",
+            "相手のクリーチャーは出たターン自分を攻撃できない"
+        ],
+        species=["ブルー・コマンド・ドラゴン", "グリーン・コマンド・ドラゴン", "ハンター"],
+        on_play=gaiaash_on_play
+        ,on_end_of_turn= gaiaash_kaiser_end_of_turn
+    ),
+
+        Card(
+        name="カウンターギミック",
+        cost=6,
+        power=8000,
+        civilizations=["緑","青"],
+        card_type="creature",
+        abilities=[
+            "W・ブレイカー",
+            "相手ターン中にマナを使わずにカードを使った場合、手札から召喚可能",
+            "このクリーチャーが出た時、カードを2枚引く",
+            "自分のコスト10以上のクリーチャーのコストを4減らす（最低1）",
+            "相手のクリーチャーは出たターン自分を攻撃できない"
+        ],
+        species=["ブルー・コマンド・ドラゴン", "グリーン・コマンド・ドラゴン", "ハンター"],
+        on_play=gaiaash_on_play
+        ,on_end_of_turn= gaiaash_kaiser_end_of_turn
+    ),
+
+        Card(
+        name="カウンターギミック",
+        cost=6,
+        power=8000,
+        civilizations=["緑","青"],
+        card_type="creature",
+        abilities=[
+            "W・ブレイカー",
+            "相手ターン中にマナを使わずにカードを使った場合、手札から召喚可能",
+            "このクリーチャーが出た時、カードを2枚引く",
+            "自分のコスト10以上のクリーチャーのコストを4減らす（最低1）",
+            "相手のクリーチャーは出たターン自分を攻撃できない"
+        ],
+        species=["ブルー・コマンド・ドラゴン", "グリーン・コマンド・ドラゴン", "ハンター"],
+        on_play=gaiaash_on_play
+        ,on_end_of_turn= gaiaash_kaiser_end_of_turn
+    ),
+
+        Card(
+        name="カウンターギミック",
+        cost=6,
+        power=8000,
+        civilizations=["緑","青"],
+        card_type="creature",
+        abilities=[
+            "W・ブレイカー",
+            "相手ターン中にマナを使わずにカードを使った場合、手札から召喚可能",
+            "このクリーチャーが出た時、カードを2枚引く",
+            "自分のコスト10以上のクリーチャーのコストを4減らす（最低1）",
+            "相手のクリーチャーは出たターン自分を攻撃できない"
+        ],
+        species=["ブルー・コマンド・ドラゴン", "グリーン・コマンド・ドラゴン", "ハンター"],
+        on_play=gaiaash_on_play
+        ,on_end_of_turn= gaiaash_kaiser_end_of_turn
+    ),
+
+    Card(
+    name="フィニッシャー",
+    cost=1,
+    power=13000,
+    civilizations=["黒"],
+    card_type=["鬼S-MAX進化クリーチャー","creature"],
+    species=["デモニオ", "鬼レクスターズ"],
+    abilities=[
+        "鬼S-MAX進化：自分がゲームに負ける時、またはこのクリーチャーが離れる時、かわりに自分の表向きのカードを３枚破壊してもよい。",
+        "このクリーチャーは進化元を必要としない。",
+        "自分のS-MAX進化クリーチャーが２体以上あれば、そのうちの１体を残し、残りをすべて手札に戻す。",
+        "T・ブレイカー",
+        "このクリーチャーが出た時、各プレイヤーは自身のシールドゾーンにあるカードを３枚ずつ選び、残りを墓地に置く。",
+        "このクリーチャーが攻撃する時、相手のクリーチャーを１体破壊し、相手の手札を２枚捨てさせる。"
+    ],
+    on_play=shrink_shields_on_entry,
+    on_attack=jaouga_attack_effect
+    ),
+
+        Card(
+    name="フィニッシャー",
+    cost=1,
+    power=13000,
+    civilizations=["黒"],
+    card_type=["鬼S-MAX進化クリーチャー","creature"],
+    species=["デモニオ", "鬼レクスターズ"],
+    abilities=[
+        "鬼S-MAX進化：自分がゲームに負ける時、またはこのクリーチャーが離れる時、かわりに自分の表向きのカードを３枚破壊してもよい。",
+        "このクリーチャーは進化元を必要としない。",
+        "自分のS-MAX進化クリーチャーが２体以上あれば、そのうちの１体を残し、残りをすべて手札に戻す。",
+        "T・ブレイカー",
+        "このクリーチャーが出た時、各プレイヤーは自身のシールドゾーンにあるカードを３枚ずつ選び、残りを墓地に置く。",
+        "このクリーチャーが攻撃する時、相手のクリーチャーを１体破壊し、相手の手札を２枚捨てさせる。"
+    ],
+    on_play=shrink_shields_on_entry,
+    on_attack=jaouga_attack_effect
+    ),
+
+        Card(
+    name="フィニッシャー",
+    cost=1,
+    power=13000,
+    civilizations=["黒"],
+    card_type=["鬼S-MAX進化クリーチャー","creature"],
+    species=["デモニオ", "鬼レクスターズ"],
+    abilities=[
+        "鬼S-MAX進化：自分がゲームに負ける時、またはこのクリーチャーが離れる時、かわりに自分の表向きのカードを３枚破壊してもよい。",
+        "このクリーチャーは進化元を必要としない。",
+        "自分のS-MAX進化クリーチャーが２体以上あれば、そのうちの１体を残し、残りをすべて手札に戻す。",
+        "T・ブレイカー",
+        "このクリーチャーが出た時、各プレイヤーは自身のシールドゾーンにあるカードを３枚ずつ選び、残りを墓地に置く。",
+        "このクリーチャーが攻撃する時、相手のクリーチャーを１体破壊し、相手の手札を２枚捨てさせる。"
+    ],
+    on_play=shrink_shields_on_entry,
+    on_attack=jaouga_attack_effect
+    ),
+
+        Card(
+    name="フィニッシャー",
+    cost=1,
+    power=13000,
+    civilizations=["黒"],
+    card_type=["鬼S-MAX進化クリーチャー","creature"],
+    species=["デモニオ", "鬼レクスターズ"],
+    abilities=[
+        "鬼S-MAX進化：自分がゲームに負ける時、またはこのクリーチャーが離れる時、かわりに自分の表向きのカードを３枚破壊してもよい。",
+        "このクリーチャーは進化元を必要としない。",
+        "自分のS-MAX進化クリーチャーが２体以上あれば、そのうちの１体を残し、残りをすべて手札に戻す。",
+        "T・ブレイカー",
+        "このクリーチャーが出た時、各プレイヤーは自身のシールドゾーンにあるカードを３枚ずつ選び、残りを墓地に置く。",
+        "このクリーチャーが攻撃する時、相手のクリーチャーを１体破壊し、相手の手札を２枚捨てさせる。"
+    ],
+    on_play=shrink_shields_on_entry,
+    on_attack=jaouga_attack_effect
+    ),
+
+        Card(
+    name="フィニッシャー",
+    cost=1,
+    power=13000,
+    civilizations=["黒"],
+    card_type=["鬼S-MAX進化クリーチャー","creature"],
+    species=["デモニオ", "鬼レクスターズ"],
+    abilities=[
+        "鬼S-MAX進化：自分がゲームに負ける時、またはこのクリーチャーが離れる時、かわりに自分の表向きのカードを３枚破壊してもよい。",
+        "このクリーチャーは進化元を必要としない。",
+        "自分のS-MAX進化クリーチャーが２体以上あれば、そのうちの１体を残し、残りをすべて手札に戻す。",
+        "T・ブレイカー",
+        "このクリーチャーが出た時、各プレイヤーは自身のシールドゾーンにあるカードを３枚ずつ選び、残りを墓地に置く。",
+        "このクリーチャーが攻撃する時、相手のクリーチャーを１体破壊し、相手の手札を２枚捨てさせる。"
+    ],
+    on_play=shrink_shields_on_entry,
+    on_attack=jaouga_attack_effect
+    ),
+
+        Card(
+    name="フィニッシャー",
+    cost=1,
+    power=13000,
+    civilizations=["黒"],
+    card_type=["鬼S-MAX進化クリーチャー","creature"],
+    species=["デモニオ", "鬼レクスターズ"],
+    abilities=[
+        "鬼S-MAX進化：自分がゲームに負ける時、またはこのクリーチャーが離れる時、かわりに自分の表向きのカードを３枚破壊してもよい。",
+        "このクリーチャーは進化元を必要としない。",
+        "自分のS-MAX進化クリーチャーが２体以上あれば、そのうちの１体を残し、残りをすべて手札に戻す。",
+        "T・ブレイカー",
+        "このクリーチャーが出た時、各プレイヤーは自身のシールドゾーンにあるカードを３枚ずつ選び、残りを墓地に置く。",
+        "このクリーチャーが攻撃する時、相手のクリーチャーを１体破壊し、相手の手札を２枚捨てさせる。"
+    ],
+    on_play=shrink_shields_on_entry,
+    on_attack=jaouga_attack_effect
+    ),
+
+        Card(
+    name="フィニッシャー",
+    cost=1,
+    power=13000,
+    civilizations=["黒"],
+    card_type=["鬼S-MAX進化クリーチャー","creature"],
+    species=["デモニオ", "鬼レクスターズ"],
+    abilities=[
+        "鬼S-MAX進化：自分がゲームに負ける時、またはこのクリーチャーが離れる時、かわりに自分の表向きのカードを３枚破壊してもよい。",
+        "このクリーチャーは進化元を必要としない。",
+        "自分のS-MAX進化クリーチャーが２体以上あれば、そのうちの１体を残し、残りをすべて手札に戻す。",
+        "T・ブレイカー",
+        "このクリーチャーが出た時、各プレイヤーは自身のシールドゾーンにあるカードを３枚ずつ選び、残りを墓地に置く。",
+        "このクリーチャーが攻撃する時、相手のクリーチャーを１体破壊し、相手の手札を２枚捨てさせる。"
+    ],
+    on_play=shrink_shields_on_entry,
+    on_attack=jaouga_attack_effect
+    ),
+
+]  # 40枚デッキを作成
 
 def create_initial_game():
     # サンプルデッキ（40枚）を生成するための前提：sample_deck が global に存在すること
@@ -1689,7 +2267,7 @@ def drop_card_api_adapter():
     id_found = card_id in backend_hand_ids
     print(f"Is the ID found in backend's hand?: {id_found}")
     print("--- /api/drop_card DEBUG END ---")
-    
+
     card_to_process = next((c for c in player.hand if c.id == card_id), None)
     if not card_to_process: return jsonify({'error': 'Card not found in hand'}), 404
 
