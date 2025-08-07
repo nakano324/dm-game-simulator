@@ -2269,9 +2269,43 @@ app.debug = True
 
 @app.route('/api/drop_card', methods=['POST'])
 def drop_card_api_adapter():
-    # 全てのロジックをコメントアウトし、単純な文字列を返すだけにする
-    return "Drop card route was reached successfully!"
+    # 状態を読み込む
+    game_state_obj = load_game_state(TEMP_GAME_ID)
+    if not game_state_obj:
+        return jsonify({'error': 'Game not found'}), 404
+        
+    data = request.get_json()
+    card_id, zone = data.get('cardId'), data.get('zone')
+    player = game_state_obj.players[game_state_obj.turn_player]
+    
+    # 手札からカードを探す
+    card_to_process = next((c for c in player.hand if c.id == card_id), None)
+    if not card_to_process:
+        return jsonify({'error': 'Card not found in hand'}), 404
 
+    # マナゾーンに置く処理
+    if zone == 'mana':
+        if getattr(player, 'used_mana_this_turn', False):
+            return jsonify({'error': 'Mana already charged this turn'}), 400
+        
+        player.hand.remove(card_to_process)
+        player.mana_zone.append(card_to_process)
+        player.used_mana_this_turn = True
+    
+    # バトルゾーンに置く処理（他のゾーンの処理も同様）
+    elif zone == 'battle':
+        # (ここにバトルゾーンのロジック)
+        pass # 仮
+    
+    else:
+        return jsonify({'error': f'Unknown zone: {zone}'}), 400
+
+    # 変更した状態を保存する
+    if save_game_state(TEMP_GAME_ID, game_state_obj):
+        return jsonify({'status': 'ok'})
+    
+    # 保存に失敗した場合
+    return jsonify({'error': 'Failed to save game state after modification'}), 500
 
 @app.route('/api/choose_card', methods=['POST'])
 def choose_card_adapter():
